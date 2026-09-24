@@ -98,6 +98,7 @@ async function flush() {
   const takenSettings = pendingSettings;
   pendingSettings = null;
   inFlight = true;
+  let failed = false;
   try {
     const res = await fetch("/api/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     if (res.status === 401) {
@@ -107,6 +108,7 @@ async function flush() {
     if (!res.ok) throw new Error(`Sync failed (${res.status})`);
     useSyncStatus.getState().set({ status: pendingCount() ? "saving" : "saved", pending: pendingCount(), lastError: undefined });
   } catch (e) {
+    failed = true;
     // put the batch back (newer pending changes win over the requeued ones)
     for (const c of COLLECTIONS) {
       for (const [id, ent] of taken.upserts[c]) if (!pendingUpserts[c].has(id) && !pendingDeletes[c].has(id)) pendingUpserts[c].set(id, ent);
@@ -117,7 +119,8 @@ async function flush() {
     setTimeout(flush, 5000);
   } finally {
     inFlight = false;
-    if (pendingCount() && !timer) schedule(300);
+    // after a failure the retry above takes over (and keeps the error visible); otherwise push what arrived meanwhile
+    if (!failed && pendingCount() && !timer) schedule(300);
   }
 }
 

@@ -16,7 +16,6 @@ await page.screenshot({ path: ".screenshots/team.png" });
 // Reports before the rate change (This month to include everything)
 await page.goto(base + "/reports", { waitUntil: "networkidle" });
 await page.waitForTimeout(400);
-const tiles = async () => (await page.locator("main").innerText()).match(/Revenue|Cost|Margin/g)?.length;
 const before = await page.locator("main").innerText();
 const costBefore = before.match(/([^\n]+)\nCost\n/)?.[1];
 console.log("cost before:", costBefore);

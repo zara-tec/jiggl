@@ -490,7 +490,7 @@ export const useStore = create<AppState>()(
       deleteTag: (id) =>
         set((s) => ({
           tags: s.tags.filter((t) => t.id !== id),
-          timeEntries: s.timeEntries.map((t) => ({ ...t, tagIds: t.tagIds.filter((x) => x !== id) })),
+          timeEntries: s.timeEntries.map((t) => (t.tagIds.includes(id) ? { ...t, tagIds: t.tagIds.filter((x) => x !== id) } : t)),
         })),
       addUser: (input) => {
         const user: User = { ...input, id: nanoid(8) };

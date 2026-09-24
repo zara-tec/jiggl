@@ -141,3 +141,20 @@ node scripts/verify-filters.mjs
 ## License
 
 GPL-3.0, see `LICENSE`.
+
+## Tests and CI
+
+```bash
+npm run typecheck   # next typegen + tsc
+npm run lint        # eslint
+npm test            # Vitest unit tests (src/**/*.test.ts)
+npm run e2e         # Playwright end-to-end tests (e2e/), needs the database
+```
+
+Unit tests cover the pure domain modules (rates, budgets, offers, allocations, the demo seed), the Zustand store and the sync diffing, plus the session and row-mapping helpers on the server. The end-to-end suite registers a throw-away account with the demo dataset for every worker and deletes it at the end; locally it starts `next dev` on port 3210 (set `BASE=http://localhost:3000` to reuse a running dev server), in CI it runs the production build against a Postgres service.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs both jobs on every push to `main` and on every pull request.
+
+## Contributing
+
+`main` is protected: it only accepts pull requests, and the `checks` and `e2e` jobs must pass before merging. Fork or branch, open a PR, and keep vendor names, private hostnames and personal data out of tracked files.
