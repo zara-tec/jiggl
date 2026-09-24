@@ -15,6 +15,26 @@ npm run dev                 # http://localhost:3000
 npm run build               # production build
 ```
 
+### Docker
+
+The `Dockerfile` builds a self-contained production image (Next.js standalone output). It has two targets: the default one runs the app, `migrate` runs `prisma migrate deploy` and exits. In a compose stack run the migration first and start the app once it has completed successfully:
+
+```yaml
+services:
+  migrate:
+    build: { context: ., target: migrate }
+    environment: { DATABASE_URL: "${DATABASE_URL}" }
+    restart: "no"
+  app:
+    build: { context: ., target: runner }
+    environment: { DATABASE_URL: "${DATABASE_URL}", AUTH_SECRET: "${AUTH_SECRET}" }
+    ports: ["127.0.0.1:3010:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+```
+
+The app listens on port 3000 inside the container and needs only `DATABASE_URL` and `AUTH_SECRET`. Put it behind a reverse proxy or tunnel that terminates TLS: session cookies are marked `Secure` in production.
+
 On first use, create an account and a workspace at **/register**. Ticking "Load the demo dataset" starts the workspace with 5 projects, ~50 work items, three weeks of hours, 4 offers, allocations, holidays and time off. **Settings → Reset demo data** (or the profile menu) restores the dataset.
 
 ## Backend
@@ -116,7 +136,6 @@ node scripts/verify-filters.mjs
 
 - Email invitations and roles enforced on the server (today roles are informative, except the workspace reset reserved to admins).
 - Invoicing: a third amount next to sold and consumed, with rates frozen on invoiced hours.
-- Deploying the app next to the database on the server (same stack, tunnel).
 - Offer revisions, timesheet approvals, attachments and links between work items.
 
 ## License
