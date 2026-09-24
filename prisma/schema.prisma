@@ -1,0 +1,251 @@
+// Jiggl database schema.
+//
+// Every workspace-scoped model uses a composite primary key (workspaceId, id):
+// ids are generated on the client (nanoid) and the demo seed uses fixed ids
+// such as "p_jig", so the same id can exist in several workspaces.
+// Entities mirror src/lib/types.ts; nested arrays live in Json columns and
+// date-times are ISO strings, exactly as the client store holds them.
+// `syncedAt` is server bookkeeping and never reaches the client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  members      Member[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  settings  Json
+  createdAt DateTime @default(now())
+
+  members     Member[]
+  clients     Client[]
+  tags        Tag[]
+  projects    Project[]
+  sprints     Sprint[]
+  issues      Issue[]
+  timeEntries TimeEntry[]
+  offers      Offer[]
+  allocations Allocation[]
+  holidays    Holiday[]
+  timeOffs    TimeOff[]
+}
+
+/// A person in a workspace (the client's "users" collection). Linked to an
+/// Account when that person can log in.
+model Member {
+  workspaceId String
+  id          String
+  accountId   String?
+  name        String
+  email       String
+  color       String
+  role        String
+  costRates   Json
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account     Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@id([workspaceId, id])
+  @@index([accountId])
+  @@index([email])
+}
+
+model Client {
+  workspaceId String
+  id          String
+  name        String
+  archived    Boolean?
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+}
+
+model Tag {
+  workspaceId String
+  id          String
+  name        String
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+}
+
+model Project {
+  workspaceId  String
+  id           String
+  key          String
+  name         String
+  type         String
+  leadId       String
+  clientId     String?
+  color        String
+  billable     Boolean
+  pricing      String
+  timeMode     String
+  status       String
+  billingRates Json
+  memberRates  Json
+  issueCounter Int
+  offerCounter Int
+  starred      Boolean?
+  archived     Boolean?
+  createdAt    String
+  syncedAt     DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, key])
+}
+
+model Sprint {
+  workspaceId String
+  id          String
+  projectId   String
+  name        String
+  goal        String?
+  state       String
+  startDate   String?
+  endDate     String?
+  order       Int
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, projectId])
+}
+
+model Issue {
+  workspaceId      String
+  id               String
+  key              String
+  projectId        String
+  type             String
+  summary          String
+  description      String?
+  status           String
+  priority         String
+  assigneeId       String?
+  reporterId       String
+  labels           Json
+  sprintId         String?
+  parentId         String?
+  storyPoints      Float?
+  originalEstimate Int?
+  dueDate          String?
+  startDate        String?
+  rank             Float
+  comments         Json
+  createdAt        String
+  updatedAt        String
+  resolvedAt       String?
+  watchers         Json
+  offerId          String?
+  offerLineId      String?
+  syncedAt         DateTime  @updatedAt
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, projectId])
+  @@index([workspaceId, key])
+}
+
+model TimeEntry {
+  workspaceId String
+  id          String
+  userId      String
+  description String
+  projectId   String?
+  issueId     String?
+  tagIds      Json
+  billable    Boolean
+  start       String
+  stop        String?
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, userId])
+  @@index([workspaceId, projectId])
+}
+
+model Offer {
+  workspaceId String
+  id          String
+  projectId   String
+  number      String
+  title       String
+  status      String
+  ownerId     String
+  issueDate   String
+  validUntil  String?
+  discountPct Float?
+  notes       String?
+  lines       Json
+  createdAt   String
+  updatedAt   String
+  sentAt      String?
+  acceptedAt  String?
+  orderedAt   String?
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, projectId])
+}
+
+model Allocation {
+  workspaceId String
+  id          String
+  projectId   String
+  userId      String
+  percent     Int
+  from        String
+  to          String?
+  issueId     String?
+  note        String?
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+}
+
+model Holiday {
+  workspaceId String
+  id          String
+  date        String
+  name        String
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+}
+
+model TimeOff {
+  workspaceId String
+  id          String
+  userId      String
+  from        String
+  to          String
+  kind        String
+  note        String?
+  syncedAt    DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+}

@@ -1,0 +1,541 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Design tokens — light theme (default)
+   Every colour in the app must come from these variables so the dark
+   theme below can swap them. Entity colours (project, avatar) are the
+   only exception: they are data, not chrome.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Medium", "SF Mono", "Segoe UI Mono", "Roboto Mono", "Ubuntu Mono", Menlo, Consolas, Courier, monospace;
+
+  /* text */
+  --ds-text: #172b4d;
+  --ds-text-subtle: #44546f;
+  --ds-text-subtlest: #626f86;
+  --ds-text-disabled: rgba(9, 30, 66, 0.31);
+  --ds-text-inverse: #ffffff;
+  --ds-text-on-brand: #ffffff;
+  --ds-text-brand: #0c66e4;
+  --ds-text-selected: #0c66e4;
+  --ds-text-success: #216e4e;
+  --ds-text-warning: #a54800;
+  --ds-text-danger: #ae2e24;
+  --ds-text-information: #0055cc;
+  --ds-text-discovery: #5e4db2;
+  --ds-link: #0c66e4;
+  --ds-link-pressed: #0055cc;
+
+  /* surfaces */
+  --ds-surface: #ffffff;
+  --ds-surface-sunken: #f7f8f9;
+  --ds-surface-raised: #ffffff;
+  --ds-surface-overlay: #ffffff;
+  --ds-surface-hovered: #f1f2f4;
+  --ds-surface-pressed: #dcdfe4;
+
+  /* backgrounds */
+  --ds-bg-neutral: rgba(9, 30, 66, 0.06);
+  --ds-bg-neutral-hovered: rgba(9, 30, 66, 0.14);
+  --ds-bg-neutral-pressed: rgba(9, 30, 66, 0.31);
+  --ds-bg-neutral-subtle: transparent;
+  --ds-bg-neutral-subtle-hovered: rgba(9, 30, 66, 0.06);
+  --ds-bg-neutral-subtle-pressed: rgba(9, 30, 66, 0.14);
+  --ds-bg-neutral-bold: #44546f;
+  --ds-bg-brand-bold: #0c66e4;
+  --ds-bg-brand-bold-hovered: #0055cc;
+  --ds-bg-brand-bold-pressed: #09326c;
+  --ds-bg-selected: #e9f2ff;
+  --ds-bg-selected-hovered: #cce0ff;
+  --ds-bg-selected-pressed: #85b8ff;
+  --ds-bg-success: #dcfff1;
+  --ds-bg-success-hovered: #baf3db;
+  --ds-bg-success-bold: #1f845a;
+  --ds-bg-warning: #fff7d6;
+  --ds-bg-warning-bold: #f5cd47;
+  --ds-bg-danger: #ffeceb;
+  --ds-bg-danger-bold: #c9372c;
+  --ds-bg-danger-bold-hovered: #ae2e24;
+  --ds-bg-information: #e9f2ff;
+  --ds-bg-information-bold: #0c66e4;
+  --ds-bg-discovery: #f3f0ff;
+  --ds-bg-discovery-bold: #6e5dc6;
+  --ds-bg-input: #ffffff;
+  --ds-bg-input-hovered: #f7f8f9;
+  --ds-overlay: rgba(9, 30, 66, 0.54);
+  --ds-tooltip-bg: #172b4d;
+  --ds-tooltip-text: #ffffff;
+
+  /* accents (subtler background + readable text of the same family) */
+  --ds-accent-blue-subtler: #cce0ff;
+  --ds-accent-blue-text: #0055cc;
+  --ds-accent-purple-subtler: #dfd8fd;
+  --ds-accent-purple-text: #5e4db2;
+  --ds-accent-green-subtler: #baf3db;
+  --ds-accent-green-text: #216e4e;
+  --ds-accent-orange-subtler: #fedec8;
+  --ds-accent-orange-text: #a54800;
+  --ds-accent-red-subtler: #ffd5d2;
+  --ds-accent-red-text: #ae2e24;
+  --ds-accent-teal-subtler: #c6edfb;
+  --ds-accent-teal-text: #206a83;
+  --ds-accent-magenta-subtler: #fdd0ec;
+  --ds-accent-magenta-text: #943d73;
+  --ds-accent-yellow-subtler: #f8e6a0;
+  --ds-accent-yellow-text: #7f5f01;
+  --ds-accent-gray-subtler: #dcdfe4;
+  --ds-accent-gray-text: #44546f;
+
+  /* lozenges (subtle and bold) */
+  --lz-default-bg: #dcdfe4;
+  --lz-default-text: #44546f;
+  --lz-default-bold-bg: #44546f;
+  --lz-default-bold-text: #ffffff;
+  --lz-inprogress-bg: #e9f2ff;
+  --lz-inprogress-text: #0055cc;
+  --lz-inprogress-bold-bg: #0c66e4;
+  --lz-inprogress-bold-text: #ffffff;
+  --lz-success-bg: #dcfff1;
+  --lz-success-text: #216e4e;
+  --lz-success-bold-bg: #1f845a;
+  --lz-success-bold-text: #ffffff;
+  --lz-removed-bg: #ffeceb;
+  --lz-removed-text: #ae2e24;
+  --lz-removed-bold-bg: #c9372c;
+  --lz-removed-bold-text: #ffffff;
+  --lz-moved-bg: #fff7d6;
+  --lz-moved-text: #a54800;
+  --lz-moved-bold-bg: #f5cd47;
+  --lz-moved-bold-text: #172b4d;
+  --lz-new-bg: #f3f0ff;
+  --lz-new-text: #5e4db2;
+  --lz-new-bold-bg: #6e5dc6;
+  --lz-new-bold-text: #ffffff;
+
+  /* charts and status colours (marks, bars, dots) */
+  --ds-chart-blue: #0c66e4;
+  --ds-chart-orange: #e56910;
+  --ds-chart-green: #1f845a;
+  --ds-chart-red: #c9372c;
+  --ds-chart-purple: #6e5dc6;
+  --ds-chart-gray: #8590a2;
+  --ds-chart-yellow: #e2b203;
+  --ds-chart-track: #dcdfe4;
+  --ds-chart-ink: #172b4d;
+  --ds-chart-muted: #626f86;
+  --ds-chart-grid: rgba(9, 30, 66, 0.14);
+  --ds-chart-axis: #b3b9c4;
+  --ds-status-todo: #44546f;
+  --ds-status-inprogress: #0c66e4;
+  --ds-status-inreview: #6e5dc6;
+  --ds-status-done: #1f845a;
+
+  /* borders */
+  --ds-border: rgba(9, 30, 66, 0.14);
+  --ds-border-bold: #758195;
+  --ds-border-input: #8590a2;
+  --ds-border-focused: #388bff;
+  --ds-border-selected: #0c66e4;
+  --ds-border-brand: #0c66e4;
+  --ds-border-danger: #e2483d;
+
+  /* icons */
+  --ds-icon: #44546f;
+  --ds-icon-subtle: #626f86;
+  --ds-icon-brand: #0c66e4;
+  --ds-star: #e2b203;
+
+  /* elevation */
+  --ds-shadow-raised: 0px 1px 1px rgba(9, 30, 66, 0.25), 0px 0px 1px rgba(9, 30, 66, 0.31);
+  --ds-shadow-overlay: 0px 8px 12px rgba(9, 30, 66, 0.15), 0px 0px 1px rgba(9, 30, 66, 0.31);
+  --ds-shadow-overflow: 0px 0px 8px rgba(9, 30, 66, 0.16), 0px 0px 1px rgba(9, 30, 66, 0.12);
+  --ds-scrollbar: rgba(9, 30, 66, 0.2);
+  --ds-scrollbar-hover: rgba(9, 30, 66, 0.35);
+
+  /* radius */
+  --ds-radius: 3px;
+  --ds-radius-md: 6px;
+  --ds-radius-lg: 8px;
+
+  /* layout */
+  --topbar-height: 48px;
+  --sidebar-width: 240px;
+}
+
+/* ------------------------------------------------------------------
+   Dark theme tokens
+   Applied by data-theme="dark" on <html>; "system" resolves to it via
+   matchMedia in src/lib/theme.ts.
+   ------------------------------------------------------------------ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ds-text: #b6c2cf;
+  --ds-text-subtle: #9fadbc;
+  --ds-text-subtlest: #8c9bab;
+  --ds-text-disabled: rgba(191, 219, 248, 0.28);
+  --ds-text-inverse: #1d2125;
+  --ds-text-on-brand: #1d2125;
+  --ds-text-brand: #579dff;
+  --ds-text-selected: #579dff;
+  --ds-text-success: #7ee2b8;
+  --ds-text-warning: #f5cd47;
+  --ds-text-danger: #fd9891;
+  --ds-text-information: #85b8ff;
+  --ds-text-discovery: #b8acf6;
+  --ds-link: #579dff;
+  --ds-link-pressed: #85b8ff;
+
+  --ds-surface: #1d2125;
+  --ds-surface-sunken: #161a1d;
+  --ds-surface-raised: #22272b;
+  --ds-surface-overlay: #282e33;
+  --ds-surface-hovered: #22272b;
+  --ds-surface-pressed: #282e33;
+
+  --ds-bg-neutral: rgba(161, 189, 217, 0.08);
+  --ds-bg-neutral-hovered: rgba(166, 197, 226, 0.16);
+  --ds-bg-neutral-pressed: rgba(191, 219, 248, 0.28);
+  --ds-bg-neutral-subtle-hovered: rgba(161, 189, 217, 0.08);
+  --ds-bg-neutral-subtle-pressed: rgba(166, 197, 226, 0.16);
+  --ds-bg-neutral-bold: #9fadbc;
+  --ds-bg-brand-bold: #579dff;
+  --ds-bg-brand-bold-hovered: #85b8ff;
+  --ds-bg-brand-bold-pressed: #cce0ff;
+  --ds-bg-selected: #1c2b41;
+  --ds-bg-selected-hovered: #09326c;
+  --ds-bg-selected-pressed: #0055cc;
+  --ds-bg-success: #1c3329;
+  --ds-bg-success-hovered: #164b35;
+  --ds-bg-success-bold: #4bce97;
+  --ds-bg-warning: #332e1b;
+  --ds-bg-warning-bold: #f5cd47;
+  --ds-bg-danger: #42221f;
+  --ds-bg-danger-bold: #f87168;
+  --ds-bg-danger-bold-hovered: #fd9891;
+  --ds-bg-information: #1c2b41;
+  --ds-bg-information-bold: #579dff;
+  --ds-bg-discovery: #2b273f;
+  --ds-bg-discovery-bold: #9f8fef;
+  --ds-bg-input: #22272b;
+  --ds-bg-input-hovered: #282e33;
+  --ds-overlay: rgba(3, 4, 4, 0.6);
+  --ds-tooltip-bg: #dee4ea;
+  --ds-tooltip-text: #1d2125;
+
+  --ds-accent-blue-subtler: #09326c;
+  --ds-accent-blue-text: #85b8ff;
+  --ds-accent-purple-subtler: #352c63;
+  --ds-accent-purple-text: #b8acf6;
+  --ds-accent-green-subtler: #164b35;
+  --ds-accent-green-text: #7ee2b8;
+  --ds-accent-orange-subtler: #702e00;
+  --ds-accent-orange-text: #fec195;
+  --ds-accent-red-subtler: #5d1f1a;
+  --ds-accent-red-text: #fd9891;
+  --ds-accent-teal-subtler: #164555;
+  --ds-accent-teal-text: #9dd9ee;
+  --ds-accent-magenta-subtler: #50253f;
+  --ds-accent-magenta-text: #f797d2;
+  --ds-accent-yellow-subtler: #533f04;
+  --ds-accent-yellow-text: #f5cd47;
+  --ds-accent-gray-subtler: #454f59;
+  --ds-accent-gray-text: #9fadbc;
+
+  --lz-default-bg: rgba(161, 189, 217, 0.12);
+  --lz-default-text: #9fadbc;
+  --lz-default-bold-bg: #9fadbc;
+  --lz-default-bold-text: #1d2125;
+  --lz-inprogress-bg: #1c2b41;
+  --lz-inprogress-text: #85b8ff;
+  --lz-inprogress-bold-bg: #579dff;
+  --lz-inprogress-bold-text: #1d2125;
+  --lz-success-bg: #1c3329;
+  --lz-success-text: #7ee2b8;
+  --lz-success-bold-bg: #4bce97;
+  --lz-success-bold-text: #1d2125;
+  --lz-removed-bg: #42221f;
+  --lz-removed-text: #fd9891;
+  --lz-removed-bold-bg: #f87168;
+  --lz-removed-bold-text: #1d2125;
+  --lz-moved-bg: #332e1b;
+  --lz-moved-text: #f5cd47;
+  --lz-moved-bold-bg: #f5cd47;
+  --lz-moved-bold-text: #1d2125;
+  --lz-new-bg: #2b273f;
+  --lz-new-text: #b8acf6;
+  --lz-new-bold-bg: #9f8fef;
+  --lz-new-bold-text: #1d2125;
+
+  --ds-chart-blue: #579dff;
+  --ds-chart-orange: #fea362;
+  --ds-chart-green: #4bce97;
+  --ds-chart-red: #f87168;
+  --ds-chart-purple: #9f8fef;
+  --ds-chart-gray: #8c9bab;
+  --ds-chart-yellow: #f5cd47;
+  --ds-chart-track: #454f59;
+  --ds-chart-ink: #b6c2cf;
+  --ds-chart-muted: #8c9bab;
+  --ds-chart-grid: rgba(166, 197, 226, 0.16);
+  --ds-chart-axis: #738496;
+  --ds-status-todo: #9fadbc;
+  --ds-status-inprogress: #579dff;
+  --ds-status-inreview: #9f8fef;
+  --ds-status-done: #4bce97;
+
+  --ds-border: rgba(166, 197, 226, 0.16);
+  --ds-border-bold: #738496;
+  --ds-border-input: #738496;
+  --ds-border-focused: #85b8ff;
+  --ds-border-selected: #579dff;
+  --ds-border-brand: #579dff;
+  --ds-border-danger: #f87168;
+
+  --ds-icon: #9fadbc;
+  --ds-icon-subtle: #8c9bab;
+  --ds-icon-brand: #579dff;
+  --ds-star: #f5cd47;
+
+  --ds-shadow-raised: 0px 0px 0px 1px rgba(3, 4, 4, 0.26), 0px 1px 1px rgba(3, 4, 4, 0.26);
+  --ds-shadow-overlay: 0px 0px 0px 1px rgba(3, 4, 4, 0.26), 0px 8px 12px rgba(3, 4, 4, 0.36), 0px 0px 1px rgba(3, 4, 4, 0.5);
+  --ds-shadow-overflow: 0px 0px 12px rgba(3, 4, 4, 0.36), 0px 0px 1px rgba(3, 4, 4, 0.5);
+  --ds-scrollbar: rgba(166, 197, 226, 0.25);
+  --ds-scrollbar-hover: rgba(166, 197, 226, 0.4);
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --color-ds-text: var(--ds-text);
+  --color-ds-text-subtle: var(--ds-text-subtle);
+  --color-ds-text-subtlest: var(--ds-text-subtlest);
+  --color-ds-text-disabled: var(--ds-text-disabled);
+  --color-ds-text-inverse: var(--ds-text-inverse);
+  --color-ds-text-on-brand: var(--ds-text-on-brand);
+  --color-ds-text-brand: var(--ds-text-brand);
+  --color-ds-text-selected: var(--ds-text-selected);
+  --color-ds-text-success: var(--ds-text-success);
+  --color-ds-text-warning: var(--ds-text-warning);
+  --color-ds-text-danger: var(--ds-text-danger);
+  --color-ds-text-information: var(--ds-text-information);
+  --color-ds-text-discovery: var(--ds-text-discovery);
+  --color-ds-link: var(--ds-link);
+
+  --color-ds-surface: var(--ds-surface);
+  --color-ds-surface-sunken: var(--ds-surface-sunken);
+  --color-ds-surface-raised: var(--ds-surface-raised);
+  --color-ds-surface-overlay: var(--ds-surface-overlay);
+  --color-ds-surface-hovered: var(--ds-surface-hovered);
+  --color-ds-surface-pressed: var(--ds-surface-pressed);
+
+  --color-ds-neutral: var(--ds-bg-neutral);
+  --color-ds-neutral-hovered: var(--ds-bg-neutral-hovered);
+  --color-ds-neutral-pressed: var(--ds-bg-neutral-pressed);
+  --color-ds-neutral-subtle-hovered: var(--ds-bg-neutral-subtle-hovered);
+  --color-ds-neutral-subtle-pressed: var(--ds-bg-neutral-subtle-pressed);
+  --color-ds-neutral-bold: var(--ds-bg-neutral-bold);
+  --color-ds-brand-bold: var(--ds-bg-brand-bold);
+  --color-ds-brand-bold-hovered: var(--ds-bg-brand-bold-hovered);
+  --color-ds-brand-bold-pressed: var(--ds-bg-brand-bold-pressed);
+  --color-ds-selected: var(--ds-bg-selected);
+  --color-ds-selected-hovered: var(--ds-bg-selected-hovered);
+  --color-ds-success: var(--ds-bg-success);
+  --color-ds-success-hovered: var(--ds-bg-success-hovered);
+  --color-ds-success-bold: var(--ds-bg-success-bold);
+  --color-ds-warning: var(--ds-bg-warning);
+  --color-ds-warning-bold: var(--ds-bg-warning-bold);
+  --color-ds-danger: var(--ds-bg-danger);
+  --color-ds-danger-bold: var(--ds-bg-danger-bold);
+  --color-ds-danger-bold-hovered: var(--ds-bg-danger-bold-hovered);
+  --color-ds-information: var(--ds-bg-information);
+  --color-ds-information-bold: var(--ds-bg-information-bold);
+  --color-ds-discovery: var(--ds-bg-discovery);
+  --color-ds-discovery-bold: var(--ds-bg-discovery-bold);
+  --color-ds-input: var(--ds-bg-input);
+  --color-ds-overlay: var(--ds-overlay);
+  --color-ds-tooltip: var(--ds-tooltip-bg);
+  --color-ds-tooltip-text: var(--ds-tooltip-text);
+  --color-ds-track: var(--ds-chart-track);
+  --color-ds-star: var(--ds-star);
+
+  --color-ds-accent-blue-subtler: var(--ds-accent-blue-subtler);
+  --color-ds-accent-blue-text: var(--ds-accent-blue-text);
+  --color-ds-accent-purple-subtler: var(--ds-accent-purple-subtler);
+  --color-ds-accent-purple-text: var(--ds-accent-purple-text);
+  --color-ds-accent-green-subtler: var(--ds-accent-green-subtler);
+  --color-ds-accent-green-text: var(--ds-accent-green-text);
+  --color-ds-accent-orange-subtler: var(--ds-accent-orange-subtler);
+  --color-ds-accent-orange-text: var(--ds-accent-orange-text);
+  --color-ds-accent-red-subtler: var(--ds-accent-red-subtler);
+  --color-ds-accent-red-text: var(--ds-accent-red-text);
+  --color-ds-accent-teal-subtler: var(--ds-accent-teal-subtler);
+  --color-ds-accent-teal-text: var(--ds-accent-teal-text);
+  --color-ds-accent-magenta-subtler: var(--ds-accent-magenta-subtler);
+  --color-ds-accent-magenta-text: var(--ds-accent-magenta-text);
+  --color-ds-accent-yellow-subtler: var(--ds-accent-yellow-subtler);
+  --color-ds-accent-yellow-text: var(--ds-accent-yellow-text);
+  --color-ds-accent-gray-subtler: var(--ds-accent-gray-subtler);
+  --color-ds-accent-gray-text: var(--ds-accent-gray-text);
+
+  --color-lz-default: var(--lz-default-bg);
+  --color-lz-default-text: var(--lz-default-text);
+  --color-lz-default-bold: var(--lz-default-bold-bg);
+  --color-lz-default-bold-text: var(--lz-default-bold-text);
+  --color-lz-inprogress: var(--lz-inprogress-bg);
+  --color-lz-inprogress-text: var(--lz-inprogress-text);
+  --color-lz-inprogress-bold: var(--lz-inprogress-bold-bg);
+  --color-lz-inprogress-bold-text: var(--lz-inprogress-bold-text);
+  --color-lz-success: var(--lz-success-bg);
+  --color-lz-success-text: var(--lz-success-text);
+  --color-lz-success-bold: var(--lz-success-bold-bg);
+  --color-lz-success-bold-text: var(--lz-success-bold-text);
+  --color-lz-removed: var(--lz-removed-bg);
+  --color-lz-removed-text: var(--lz-removed-text);
+  --color-lz-removed-bold: var(--lz-removed-bold-bg);
+  --color-lz-removed-bold-text: var(--lz-removed-bold-text);
+  --color-lz-moved: var(--lz-moved-bg);
+  --color-lz-moved-text: var(--lz-moved-text);
+  --color-lz-moved-bold: var(--lz-moved-bold-bg);
+  --color-lz-moved-bold-text: var(--lz-moved-bold-text);
+  --color-lz-new: var(--lz-new-bg);
+  --color-lz-new-text: var(--lz-new-text);
+  --color-lz-new-bold: var(--lz-new-bold-bg);
+  --color-lz-new-bold-text: var(--lz-new-bold-text);
+
+  --color-chart-blue: var(--ds-chart-blue);
+  --color-chart-orange: var(--ds-chart-orange);
+  --color-chart-green: var(--ds-chart-green);
+  --color-chart-red: var(--ds-chart-red);
+  --color-chart-purple: var(--ds-chart-purple);
+  --color-chart-gray: var(--ds-chart-gray);
+  --color-chart-yellow: var(--ds-chart-yellow);
+
+  --color-ds-border: var(--ds-border);
+  --color-ds-border-bold: var(--ds-border-bold);
+  --color-ds-border-input: var(--ds-border-input);
+  --color-ds-border-focused: var(--ds-border-focused);
+  --color-ds-border-selected: var(--ds-border-selected);
+  --color-ds-border-danger: var(--ds-border-danger);
+
+  --color-ds-icon: var(--ds-icon);
+  --color-ds-icon-subtle: var(--ds-icon-subtle);
+  --color-ds-icon-brand: var(--ds-icon-brand);
+
+  --shadow-ds-raised: var(--ds-shadow-raised);
+  --shadow-ds-overlay: var(--ds-shadow-overlay);
+  --shadow-ds-overflow: var(--ds-shadow-overflow);
+
+  --radius-ds: var(--ds-radius);
+  --radius-ds-md: var(--ds-radius-md);
+  --radius-ds-lg: var(--ds-radius-lg);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--ds-bg-selected-hovered);
+}
+
+/* Thin scrollbars */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--ds-scrollbar);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ds-scrollbar-hover);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  /* Typography scale */
+  .ds-heading-xxl { font-size: 29px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+  .ds-heading-xl  { font-size: 24px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  .ds-heading-lg  { font-size: 20px; line-height: 24px; font-weight: 600; }
+  .ds-heading-md  { font-size: 16px; line-height: 20px; font-weight: 600; }
+  .ds-heading-sm  { font-size: 14px; line-height: 16px; font-weight: 600; }
+  .ds-heading-xs  { font-size: 12px; line-height: 16px; font-weight: 600; }
+  .ds-heading-xxs { font-size: 11px; line-height: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+
+  /* Text field */
+  .ds-input {
+    background: var(--ds-bg-input);
+    border: 2px solid var(--ds-border-input);
+    border-radius: var(--ds-radius);
+    padding: 6px 8px;
+    line-height: 20px;
+    color: var(--ds-text);
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .ds-input:hover { background: var(--ds-bg-input-hovered); }
+  .ds-input:focus { outline: none; border-color: var(--ds-border-focused); background: var(--ds-bg-input); }
+  .ds-input::placeholder { color: var(--ds-text-subtlest); }
+
+  /* Inline edit wrapper */
+  .ds-inline-edit {
+    border: 2px solid transparent;
+    border-radius: var(--ds-radius);
+    transition: background 0.15s;
+  }
+  .ds-inline-edit:hover { background: var(--ds-bg-neutral-subtle-hovered); }
+  .ds-inline-edit:focus-within { background: var(--ds-bg-input); border-color: var(--ds-border-focused); }
+}
+
+.fade-in { animation: fadeIn 0.15s ease-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+
+.timer-pulse { animation: timerPulse 1.6s ease-in-out infinite; }
+@keyframes timerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 55, 44, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(201, 55, 44, 0); }
+}
+
+.tabular-nums { font-variant-numeric: tabular-nums; }

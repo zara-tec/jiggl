@@ -1,0 +1,26 @@
+# Postgres for development. Point DATABASE_URL in .env at it (see .env.example).
+#
+#   docker compose up -d
+#   DATABASE_URL="postgresql://jiggl:jiggl@localhost:5432/jiggl?schema=public"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jiggl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jiggl
+      POSTGRES_USER: jiggl
+      POSTGRES_PASSWORD: jiggl
+    ports:
+      - "5432:5432"
+    volumes:
+      - jiggl_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jiggl -d jiggl"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jiggl_pgdata:
