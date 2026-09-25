@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import { HttpError, hashPassword, requireSession } from "@/server/auth";
-import { handler, readJson } from "@/server/http";
+import { handler, readJson, requestOrigin } from "@/server/http";
 import { requireAdmin } from "@/server/members";
+import { trySend } from "@/server/mail";
+import { passwordMail } from "@/lib/mail";
 
 /**
  * Set or reset a member's password (admins only). Creates the account when
  * the member has none. Refuses when the account also belongs to a workspace
  * the caller does not administer: that person changes it from Settings.
+ * With outgoing email set up, the new password is emailed to the member;
+ * `mail` reports how that went.
  */
 export const POST = handler(async (req) => {
   const session = await requireSession();
@@ -18,6 +22,7 @@ export const POST = handler(async (req) => {
   const member = await prisma.member.findUnique({ where: { workspaceId_id: { workspaceId: session.workspaceId, id: body.memberId ?? "" } } });
   if (!member) throw new HttpError(404, "Member not found");
   if (member.id === admin.id) throw new HttpError(400, "Change your own password from Settings");
+  if (member.deactivatedAt) throw new HttpError(409, `${member.name} is deactivated: reactivate them first`);
   const email = member.email.toLowerCase();
 
   const created = await prisma.$transaction(async (tx) => {
@@ -36,5 +41,9 @@ export const POST = handler(async (req) => {
     if (!member.accountId) await tx.member.update({ where: { workspaceId_id: { workspaceId: member.workspaceId, id: member.id } }, data: { accountId: account.id } });
     return false;
   });
-  return NextResponse.json({ ok: true, accountCreated: created });
+
+  const workspace = await prisma.workspace.findUniqueOrThrow({ where: { id: session.workspaceId }, select: { name: true } });
+  const message = passwordMail({ workspace: workspace.name, admin: admin.name, name: member.name, email, origin: requestOrigin(req), password, created });
+  const mail = await trySend(session.workspaceId, workspace.name, { name: member.name, email }, message);
+  return NextResponse.json({ ok: true, accountCreated: created, mail });
 });

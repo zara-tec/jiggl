@@ -19,6 +19,8 @@ export interface User {
   costRates: RatePeriod[];
   /** Server-side flag: the member is linked to an account and can sign in (never written back) */
   linked?: boolean;
+  /** When an admin deactivated the member: history stays, no access and not offered for new work (set only through the members API) */
+  deactivatedAt?: string;
 }
 
 export interface WorkspaceSettings {

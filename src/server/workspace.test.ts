@@ -72,3 +72,11 @@ describe("fromRow", () => {
     }
   });
 });
+
+describe("server-managed fields", () => {
+  it("the sync cannot write a member's deactivation, but the client reads it", () => {
+    const row = toRow("users", { id: "u1", name: "Ada", email: "ada@example.com", color: "#000", role: "member", costRates: [], deactivatedAt: "2026-09-01T00:00:00.000Z" });
+    expect(row).not.toHaveProperty("deactivatedAt");
+    expect(fromRow("users", { workspaceId: "w", id: "u1", deactivatedAt: "2026-09-01T00:00:00.000Z", syncedAt: new Date() })).toMatchObject({ deactivatedAt: "2026-09-01T00:00:00.000Z" });
+  });
+});

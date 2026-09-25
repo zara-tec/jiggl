@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { ID, Project } from "@/lib/types";
 import { forecastMembers } from "@/lib/forecast";
-import { isTeamOpen, projectTeam } from "@/lib/team";
+import { isActive, isTeamOpen, projectTeam } from "@/lib/team";
 import { Avatar } from "@/components/ui/Avatar";
 import { Select } from "@/components/ui/Select";
 
@@ -24,7 +24,7 @@ export function ProjectTeamSection({ project }: { project: Project }) {
   const removeMember = useStore((s) => s.removeProjectMember);
   const open = isTeamOpen(project);
   const team = projectTeam(project, users);
-  const outside = users.filter((u) => !team.some((t) => t.id === u.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const outside = users.filter((u) => isActive(u) && !team.some((t) => t.id === u.id)).sort((a, b) => a.name.localeCompare(b.name));
 
   /** People already working on the project: the natural first team */
   const suggested = (): ID[] => {
@@ -68,6 +68,7 @@ export function ProjectTeamSection({ project }: { project: Project }) {
           team.map((u) => (
             <span key={u.id} className="inline-flex h-8 items-center gap-1.5 rounded-ds bg-ds-neutral pl-1.5 pr-2 text-sm" data-testid="team-member">
               <Avatar user={u} size="xs" /> {u.name}
+              {!isActive(u) && <span className="text-xs text-ds-text-subtlest">deactivated</span>}
               {u.id === project.leadId ? (
                 <span className="text-xs text-ds-text-subtlest">lead</span>
               ) : (

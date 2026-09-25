@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
-import { HttpError, requireSession } from "@/server/auth";
+import { requireSession } from "@/server/auth";
+import { requireMember } from "@/server/members";
 import { handler, readJson } from "@/server/http";
 import { deleteMany, isCollection, upsertMany } from "@/server/workspace";
 import type { WorkspaceSettings } from "@/lib/types";
@@ -18,8 +19,7 @@ interface Body {
  */
 export const POST = handler(async (req) => {
   const session = await requireSession();
-  const member = await prisma.member.findFirst({ where: { workspaceId: session.workspaceId, accountId: session.accountId } });
-  if (!member) throw new HttpError(403, "You are not a member of this workspace");
+  await requireMember(session);
   const body = await readJson<Body>(req);
   const ws = session.workspaceId;
   let count = 0;

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { HolidaysSection } from "@/components/allocations/HolidaysSection";
 import { ChangePasswordSection } from "@/components/settings/ChangePassword";
 import { InstanceSection } from "@/components/settings/InstanceSection";
+import { MailSection } from "@/components/settings/MailSection";
 import { useTheme, type Theme } from "@/lib/theme";
 import { Moon, Monitor, Sun } from "lucide-react";
 
@@ -110,6 +111,8 @@ export default function SettingsPage() {
             </div>
             <p className="mt-2 text-xs text-ds-text-subtlest">Hours per day converts tracked and sold hours into days across budgets and reports.</p>
           </section>
+
+          <MailSection />
 
           <HolidaysSection />
 

@@ -177,6 +177,8 @@ export interface AppState {
   /** Add a member; `id` is given when the server created the row first (invite with a welcome password) */
   addUser: (input: Omit<User, "id"> & { id?: ID }) => User;
   updateUser: (id: ID, patch: Partial<User>) => void;
+  /** Drop a member the server has just removed, with the references that do not block removal (teams, rate overrides, watchers) */
+  removeUser: (id: ID) => void;
   /** Explicit team of a project (the lead is always in); undefined opens the project to everyone */
   setProjectTeam: (projectId: ID, memberIds: ID[] | undefined) => void;
   addProjectMember: (projectId: ID, userId: ID) => void;
@@ -555,6 +557,17 @@ export const useStore = create<AppState>()(
       removeProjectMember: (projectId, userId) =>
         set((s) => ({ projects: s.projects.map((p) => (p.id === projectId && p.memberIds?.includes(userId) ? { ...p, memberIds: p.memberIds.filter((x) => x !== userId) } : p)) })),
       updateUser: (id, patch) => set((s) => ({ users: s.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) })),
+      removeUser: (id) =>
+        set((s) => ({
+          users: s.users.filter((u) => u.id !== id),
+          projects: s.projects.map((p) => {
+            if (!p.memberIds?.includes(id) && !(id in (p.memberRates ?? {}))) return p;
+            const memberRates = { ...p.memberRates };
+            delete memberRates[id];
+            return { ...p, memberIds: p.memberIds?.filter((x) => x !== id), memberRates };
+          }),
+          issues: s.issues.map((i) => (i.watchers.includes(id) ? { ...i, watchers: i.watchers.filter((w) => w !== id) } : i)),
+        })),
 
       /* ---------------- Offers ---------------- */
       createOffer: (projectId, input) => {

@@ -539,3 +539,28 @@ describe("project teams and members", () => {
     expect(offer(o.id).lines.find((l) => l.id === b.id)!.plannedStart).toBe("2026-05-11");
   });
 });
+
+describe("removeUser", () => {
+  it("drops the member and cleans teams, rate overrides and watchers, touching nothing else", () => {
+    const id = "u_elena";
+    // make sure every kind of soft reference exists
+    const target = state().issues[0];
+    state().updateIssue(target.id, { watchers: [...target.watchers, id] });
+    const before = { projects: state().projects, issues: state().issues, entries: state().timeEntries };
+    expect(before.projects.some((p) => id in (p.memberRates ?? {}))).toBe(true);
+    state().removeUser(id);
+    expect(state().users.some((u) => u.id === id)).toBe(false);
+    for (const p of state().projects) {
+      const old = before.projects.find((x) => x.id === p.id)!;
+      expect(p.memberIds ?? []).not.toContain(id);
+      expect(p.memberRates ?? {}).not.toHaveProperty(id);
+      if (!old.memberIds?.includes(id) && !(id in (old.memberRates ?? {}))) expect(p).toBe(old);
+    }
+    for (const i of state().issues) {
+      const old = before.issues.find((x) => x.id === i.id)!;
+      if (old.watchers.includes(id)) expect(i.watchers).not.toContain(id);
+      else expect(i).toBe(old);
+    }
+    expect(state().timeEntries).toBe(before.entries);
+  });
+});

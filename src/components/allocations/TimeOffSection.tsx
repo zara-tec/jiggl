@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { Lozenge } from "@/components/ui/Lozenge";
+import { pickable } from "@/lib/team";
 
 /** Absences (vacation, sick leave): allocated hours are skipped on these days. */
 export function TimeOffSection() {
@@ -76,7 +77,7 @@ export function TimeOffSection() {
           </>
         }
       >
-        <label className="mb-4 block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">Member</span><Select value={userId} onChange={(v) => v && setUserId(v)} options={users.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="xs" /> }))} /></label>
+        <label className="mb-4 block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">Member</span><Select value={userId} onChange={(v) => v && setUserId(v)} options={pickable(users, userId).map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="xs" /> }))} /></label>
         <div className="grid grid-cols-2 gap-4">
           <label className="mb-4 block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">From</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="ds-input" /></label>
           <label className="mb-4 block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">To</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="ds-input" /></label>

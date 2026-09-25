@@ -9,9 +9,9 @@ export function generatePassword(): string {
 
 export const MIN_PASSWORD_LENGTH = 8;
 
-/** POST JSON to an API route; throws with the server's message on failure */
-export async function postJson<T = { ok: true }>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+/** Send JSON to an API route (POST unless told otherwise); throws with the server's message on failure */
+export async function postJson<T = { ok: true }>(url: string, body: unknown, method: "POST" | "PATCH" | "DELETE" = "POST"): Promise<T> {
+  const res = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
