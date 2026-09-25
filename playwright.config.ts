@@ -21,6 +21,8 @@ export default defineConfig({
   reporter: ci ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
+    // an action on an element that never becomes ready must fail, not hang the test
+    actionTimeout: 15_000,
     channel: "chrome",
     viewport: { width: 1440, height: 900 },
     trace: "on-first-retry",

@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ArrowDown, ArrowUp, Plus, Search, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { useLoggedByIssue, useProjectByKey, useProjectIssues } from "@/hooks/useData";
+import { useLoggedByIssue, useProjectByKey, useProjectIssues, useProjectTeam } from "@/hooks/useData";
 import { STATUSES, ISSUE_TYPES, type Issue, type IssueStatus, type IssueType } from "@/lib/types";
 import { cn, formatDurationShort, relativeTime } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,7 @@ type SortKey = "key" | "summary" | "status" | "assignee" | "priority" | "updated
 export default function ListPage({ params }: PageProps<"/projects/[key]/list">) {
   const { key } = use(params);
   const project = useProjectByKey(key);
+  const team = useProjectTeam(project?.id);
   const issues = useProjectIssues(project?.id);
   const users = useStore((s) => s.users);
   const sprints = useStore((s) => s.sprints);
@@ -103,7 +104,7 @@ export default function ListPage({ params }: PageProps<"/projects/[key]/list">) 
           ]}
         />
         <Select value={type} onChange={setType} searchable={false} clearable appearance="chip" chipLabel="Type" placeholder="All" options={ISSUE_TYPES.map((t) => ({ value: t.id, label: t.name, icon: <IssueTypeIcon type={t.id as IssueType} /> }))} />
-        <Select value={assignee} onChange={setAssignee} clearable appearance="chip" chipLabel="Assignee" placeholder="All" options={[{ value: "unassigned", label: "Unassigned" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
+        <Select value={assignee} onChange={setAssignee} clearable appearance="chip" chipLabel="Assignee" placeholder="All" options={[{ value: "unassigned", label: "Unassigned" }, ...team.map((u) => ({ value: u.id, label: u.name }))]} />
         {(q || status || type || assignee) && (
           <Button appearance="subtle" iconBefore={<X />} onClick={() => { setQ(""); setStatus(null); setType(null); setAssignee(null); }}>
             Clear filters
@@ -144,7 +145,7 @@ export default function ListPage({ params }: PageProps<"/projects/[key]/list">) 
                     {parent?.type === "epic" && <EpicLozenge id={parent.id} name={parent.summary} />}
                   </td>
                   <td className="border-b border-ds-border py-1.5 pr-3"><StatusSelect value={i.status} onChange={(v) => update(i.id, { status: v })} compact /></td>
-                  <td className="border-b border-ds-border py-1.5 pr-3"><UserSelect value={i.assigneeId} onChange={(v) => update(i.id, { assigneeId: v })} /></td>
+                  <td className="border-b border-ds-border py-1.5 pr-3"><UserSelect value={i.assigneeId} onChange={(v) => update(i.id, { assigneeId: v })} projectId={i.projectId} /></td>
                   <td className="border-b border-ds-border py-1.5 pr-3"><PrioritySelect value={i.priority} onChange={(v) => update(i.id, { priority: v })} /></td>
                   <td className="border-b border-ds-border py-1.5 pr-3 text-xs text-ds-text-subtle">{sprint?.name ?? "—"}</td>
                   <td className="border-b border-ds-border py-1.5 pr-3 text-right"><PointsBadge points={i.storyPoints} /></td>

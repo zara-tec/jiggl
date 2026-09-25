@@ -4,7 +4,9 @@ import type {
   Client,
   Holiday,
   Issue,
+  ForecastActivity,
   Offer,
+  OfferBaseline,
   OfferLine,
   TimeOff,
   IssuePriority,
@@ -16,8 +18,10 @@ import type {
   TimeEntry,
   User,
 } from "./types";
+import { captureBaseline } from "./forecast";
+import { scheduleLines } from "./schedule";
 
-export const SEED_VERSION = 6;
+export const SEED_VERSION = 7;
 
 /* Deterministic PRNG so the demo looks the same on every reset */
 function mulberry32(a: number) {
@@ -39,6 +43,7 @@ export interface SeedData {
   issues: Issue[];
   timeEntries: TimeEntry[];
   offers: Offer[];
+  offerBaselines: OfferBaseline[];
   allocations: Allocation[];
   holidays: Holiday[];
   timeOffs: TimeOff[];
@@ -333,6 +338,22 @@ export function buildSeed(now: Date = new Date()): SeedData {
     { id: id("c"), authorId: "u_alex", body: "Yes, let's keep the project colour dot next to the project name and the rest consistent with the work views.", createdAt: iso(subDays(now, 1)) },
   );
 
+  const holidays: Holiday[] = [
+    { id: "h1", date: "2026-01-01", name: "New Year's Day" },
+    { id: "h2", date: "2026-01-06", name: "Epiphany" },
+    { id: "h3", date: "2026-04-06", name: "Easter Monday" },
+    { id: "h4", date: "2026-04-25", name: "Liberation Day" },
+    { id: "h5", date: "2026-05-01", name: "Labour Day" },
+    { id: "h6", date: "2026-06-02", name: "Republic Day" },
+    { id: "h7", date: "2026-08-15", name: "Assumption" },
+    { id: "h8", date: "2026-11-01", name: "All Saints" },
+    { id: "h9", date: "2026-12-08", name: "Immaculate Conception" },
+    { id: "h10", date: "2026-12-25", name: "Christmas" },
+    { id: "h11", date: "2026-12-26", name: "St. Stephen" },
+    { id: "h12", date: "2026-08-10", to: "2026-08-21", name: "Summer closure", kind: "closure" },
+    { id: "h13", date: "2026-12-28", to: "2027-01-05", name: "Christmas closure", kind: "closure" },
+  ];
+
   /* ---------- Offers ---------- */
   const offers: Offer[] = [];
   const ymd = (d: Date) => formatISO(d, { representation: "date" });
@@ -343,6 +364,10 @@ export function buildSeed(now: Date = new Date()): SeedData {
     order,
     ...o,
   });
+  // forecast sub-rows: who does what, in hours
+  let activityCounter = 1;
+  const act = (name: string, effort: Record<string, number>, extra?: Partial<ForecastActivity>): ForecastActivity => ({ id: `fa_${(activityCounter++).toString(36)}`, name, effort, order: 0, ...extra });
+  const plan = (...activities: ForecastActivity[]) => activities.map((a, i) => ({ ...a, order: i + 1 }));
 
   const jigOrder: Offer = {
     id: "o_jig_1",
@@ -355,11 +380,11 @@ export function buildSeed(now: Date = new Date()): SeedData {
     validUntil: ymd(subDays(now, 15)),
     notes: "Fixed price. Includes onboarding workshop and two months of support.",
     lines: [
-      line({ section: "Build", description: "Time tracking", details: "Timer, manual entries, calendar and history.", qty: 120, unit: "hours", unitPrice: 80, hours: 120, plannedStart: ymd(subDays(now, 30)), plannedEnd: ymd(addDays(now, 14)), issueId: refs["e_time"] }, 1),
-      line({ section: "Build", description: "Boards & backlog", details: "Kanban board, backlog, sprints.", qty: 80, unit: "hours", unitPrice: 80, hours: 80, plannedStart: ymd(subDays(now, 30)), plannedEnd: ymd(addDays(now, 7)), issueId: refs["e_board"] }, 2),
-      line({ section: "Build", description: "Reporting", details: "Summary, detailed and weekly reports.", qty: 60, unit: "hours", unitPrice: 80, hours: 60, plannedStart: ymd(addDays(now, 7)), plannedEnd: ymd(addDays(now, 35)), issueId: refs["e_reports"] }, 3),
-      line({ section: "Foundation", description: "Authentication & workspaces", qty: 40, unit: "hours", unitPrice: 80, hours: 40, plannedStart: ymd(subDays(now, 40)), plannedEnd: ymd(subDays(now, 10)), issueId: refs["e_auth"] }, 4),
-      line({ section: "Services", description: "Onboarding workshop", qty: 1, unit: "flat", unitPrice: 1500, hours: 8, issueType: "task" }, 5),
+      line({ section: "Build", description: "Time tracking", details: "Timer, manual entries, calendar and history.", qty: 120, unit: "hours", unitPrice: 80, hours: 120, plannedStart: ymd(subDays(now, 30)), plannedEnd: ymd(addDays(now, 14)), issueId: refs["e_time"], activities: plan(act("Timer and manual entries", { u_alex: 32, u_marco: 40 }), act("Calendar and history", { u_marco: 24, u_sara: 24 }), act("Idle detection and reminders", { u_sara: 12 }, { unsold: true, note: "Asked by the client after the order; not quoted." })) }, 1),
+      line({ section: "Build", description: "Boards & backlog", details: "Kanban board, backlog, sprints.", qty: 80, unit: "hours", unitPrice: 80, hours: 80, plannedStart: ymd(subDays(now, 30)), plannedEnd: ymd(addDays(now, 7)), issueId: refs["e_board"], activities: plan(act("Kanban board", { u_luca: 40 }), act("Backlog and sprints", { u_luca: 32, u_alex: 8 })) }, 2),
+      line({ section: "Build", description: "Reporting", details: "Summary, detailed and weekly reports.", qty: 60, unit: "hours", unitPrice: 80, hours: 60, plannedStart: ymd(addDays(now, 7)), plannedEnd: ymd(addDays(now, 35)), issueId: refs["e_reports"], activities: plan(act("Summary and detailed reports", { u_sara: 40 }), act("Weekly report and export", { u_sara: 24 })) }, 3),
+      line({ section: "Foundation", description: "Authentication & workspaces", qty: 40, unit: "hours", unitPrice: 80, hours: 40, plannedStart: ymd(subDays(now, 40)), plannedEnd: ymd(subDays(now, 10)), issueId: refs["e_auth"], activities: plan(act("Sessions and passwords", { u_alex: 24 }), act("Workspace switching", { u_alex: 16 })) }, 4),
+      line({ section: "Services", description: "Onboarding workshop", qty: 1, unit: "flat", unitPrice: 1500, hours: 8, issueType: "task", activities: plan(act("Workshop", { u_giulia: 8 })) }, 5),
     ],
     createdAt: iso(subDays(now, 45)),
     updatedAt: iso(subDays(now, 28)),
@@ -378,8 +403,8 @@ export function buildSeed(now: Date = new Date()): SeedData {
     issueDate: ymd(subDays(now, 5)),
     validUntil: ymd(addDays(now, 25)),
     lines: [
-      line({ description: "SSO with Google Workspace", qty: 5, unit: "days", unitPrice: 640, hours: 40, plannedStart: ymd(addDays(now, 21)), plannedEnd: ymd(addDays(now, 35)) }, 1),
-      line({ description: "Calendar view of tracked time", qty: 8, unit: "days", unitPrice: 640, hours: 64, plannedStart: ymd(addDays(now, 28)), plannedEnd: ymd(addDays(now, 49)) }, 2),
+      line({ description: "SSO with Google Workspace", qty: 5, unit: "days", unitPrice: 640, hours: 40, plannedStart: ymd(addDays(now, 21)), plannedEnd: ymd(addDays(now, 35)), activities: plan(act("Provider integration", { u_alex: 24, u_sara: 16 }), act("Account linking and tests", { u_sara: 8 })) }, 1),
+      line({ description: "Calendar view of tracked time", qty: 8, unit: "days", unitPrice: 640, hours: 64, plannedStart: ymd(addDays(now, 28)), plannedEnd: ymd(addDays(now, 49)), predecessorId: "ol_6", lagDays: 2, activities: plan(act("Calendar UI", { u_sara: 40, u_luca: 24 })) }, 2),
     ],
     createdAt: iso(subDays(now, 5)),
     updatedAt: iso(subDays(now, 3)),
@@ -395,8 +420,8 @@ export function buildSeed(now: Date = new Date()): SeedData {
     issueDate: ymd(subDays(now, 20)),
     notes: "Time & material, ceiling 320 hours.",
     lines: [
-      line({ description: "Offline tracking", details: "Queue, sync and conflict resolution.", qty: 200, unit: "hours", unitPrice: 95, hours: 200, plannedStart: ymd(subDays(now, 10)), plannedEnd: ymd(addDays(now, 30)), issueId: refs["e_offline"] }, 1),
-      line({ description: "Widgets & shortcuts", qty: 120, unit: "hours", unitPrice: 95, hours: 120, plannedStart: ymd(addDays(now, 14)), plannedEnd: ymd(addDays(now, 45)), issueId: refs["e_widgets"] }, 2),
+      line({ description: "Offline tracking", details: "Queue, sync and conflict resolution.", qty: 200, unit: "hours", unitPrice: 95, hours: 200, plannedStart: ymd(subDays(now, 10)), plannedEnd: ymd(addDays(now, 30)), issueId: refs["e_offline"], activities: plan(act("Sync queue", { u_marco: 80, u_luca: 40 }), act("Conflict resolution", { u_marco: 60 }), act("Device tests", { u_luca: 20 })) }, 1),
+      line({ description: "Widgets & shortcuts", qty: 120, unit: "hours", unitPrice: 95, hours: 120, plannedStart: ymd(addDays(now, 14)), plannedEnd: ymd(addDays(now, 45)), issueId: refs["e_widgets"], activities: plan(act("Home screen widgets", { u_luca: 60 }), act("Shortcuts and deep links", { u_luca: 40, u_giulia: 8 })) }, 2),
     ],
     createdAt: iso(subDays(now, 20)),
     updatedAt: iso(subDays(now, 12)),
@@ -414,8 +439,8 @@ export function buildSeed(now: Date = new Date()): SeedData {
     issueDate: ymd(subDays(now, 2)),
     validUntil: ymd(addDays(now, 28)),
     lines: [
-      line({ section: "Discovery", description: "Discovery workshops and architecture", qty: 6, unit: "days", unitPrice: 720, hours: 48, plannedStart: ymd(addDays(now, 14)), plannedEnd: ymd(addDays(now, 28)) }, 1),
-      line({ section: "Build", description: "Ingestion pipelines", qty: 25, unit: "days", unitPrice: 720, hours: 200, plannedStart: ymd(addDays(now, 28)), plannedEnd: ymd(addDays(now, 77)) }, 2),
+      line({ section: "Discovery", description: "Discovery workshops and architecture", qty: 6, unit: "days", unitPrice: 720, hours: 48, plannedStart: ymd(addDays(now, 14)), plannedEnd: ymd(addDays(now, 28)), activities: plan(act("Workshops", { u_elena: 24, u_giulia: 16 }), act("Architecture note", { u_elena: 8 })) }, 1),
+      line({ section: "Build", description: "Ingestion pipelines", qty: 25, unit: "days", unitPrice: 720, hours: 200, plannedStart: ymd(addDays(now, 28)), plannedEnd: ymd(addDays(now, 77)), predecessorId: "ol_a", activities: plan(act("Connectors", { u_marco: 120 }), act("Orchestration and monitoring", { u_luca: 80 })) }, 2),
       line({ section: "Build", description: "Dashboards and self-service reporting", qty: 15, unit: "days", unitPrice: 720, hours: 120, plannedStart: ymd(addDays(now, 63)), plannedEnd: ymd(addDays(now, 98)) }, 3),
       line({ section: "Services", description: "Training", qty: 1, unit: "flat", unitPrice: 2500, hours: 16, issueType: "task" }, 4),
     ],
@@ -425,6 +450,26 @@ export function buildSeed(now: Date = new Date()): SeedData {
   projects.find((p) => p.id === "p_jig")!.offerCounter = 2;
   projects.find((p) => p.id === "p_mob")!.offerCounter = 1;
   projects.find((p) => p.id === "p_data")!.offerCounter = 1;
+  // dependent lines get their dates from their predecessors, like the store does on every edit
+  const cal = { workDays: [1, 2, 3, 4, 5], holidays };
+  for (const o of offers) o.lines = scheduleLines(o.lines, { cal, hoursPerDay: 8 });
+
+  /* ---------- Baselines: what was planned when the orders were placed ---------- */
+  const offerBaselines: OfferBaseline[] = [];
+  const projectOf = (o: Offer) => projects.find((p) => p.id === o.projectId);
+  const replan = (o: Offer, changes: Record<number, ForecastActivity[]>): Offer => ({ ...o, lines: o.lines.map((l) => (changes[l.order] ? { ...l, activities: changes[l.order] } : l)) });
+  // JIG-O1 was planned with Marco on the whole time-tracking line and Luca on reporting; the
+  // team changed (Sara took over both, at a higher cost rate) and an unsold activity appeared.
+  const jigAsOrdered = replan(jigOrder, {
+    1: plan(act("Timer and manual entries", { u_alex: 32, u_marco: 40 }), act("Calendar and history", { u_marco: 48 })),
+    3: plan(act("Summary and detailed reports", { u_luca: 36 }), act("Weekly report and export", { u_luca: 24 })),
+  });
+  offerBaselines.push({ id: "b_jig_1_order", ...captureBaseline(jigAsOrdered, { users, project: projectOf(jigOrder), name: "Order", kind: "order", note: "Taken when the offer became an order", createdBy: "u_alex", now: jigOrder.orderedAt! }) });
+  const mobOrder = offers.find((o) => o.id === "o_mob_1")!;
+  offerBaselines.push({ id: "b_mob_1_order", ...captureBaseline(mobOrder, { users, project: projectOf(mobOrder), name: "Order", kind: "order", note: "Taken when the offer became an order", createdBy: "u_giulia", now: mobOrder.orderedAt! }) });
+  const jigPhase2 = offers.find((o) => o.id === "o_jig_2")!;
+  const jigPhase2AsSent = replan(jigPhase2, { 2: plan(act("Calendar UI", { u_sara: 64 })) });
+  offerBaselines.push({ id: "b_jig_2_sent", ...captureBaseline(jigPhase2AsSent, { users, project: projectOf(jigPhase2), name: "Sent to client", kind: "manual", note: "Forecast behind the price we quoted", createdBy: "u_alex", now: jigPhase2.sentAt! }) });
   // link converted lines back to their epics
   for (const o of offers) {
     for (const l of o.lines) {
@@ -508,24 +553,22 @@ export function buildSeed(now: Date = new Date()): SeedData {
     { id: "al_2", projectId: "p_int", userId: "u_elena", percent: 30, from: "2026-08-01", note: "Hiring & operations" },
     { id: "al_3", projectId: "p_int", userId: "u_marco", percent: 10, from: "2026-09-01", note: "DevOps on-call" },
   ];
-  const holidays: Holiday[] = [
-    { id: "h1", date: "2026-01-01", name: "New Year's Day" },
-    { id: "h2", date: "2026-01-06", name: "Epiphany" },
-    { id: "h3", date: "2026-04-06", name: "Easter Monday" },
-    { id: "h4", date: "2026-04-25", name: "Liberation Day" },
-    { id: "h5", date: "2026-05-01", name: "Labour Day" },
-    { id: "h6", date: "2026-06-02", name: "Republic Day" },
-    { id: "h7", date: "2026-08-15", name: "Assumption" },
-    { id: "h8", date: "2026-11-01", name: "All Saints" },
-    { id: "h9", date: "2026-12-08", name: "Immaculate Conception" },
-    { id: "h10", date: "2026-12-25", name: "Christmas" },
-    { id: "h11", date: "2026-12-26", name: "St. Stephen" },
-  ];
   const timeOffs: TimeOff[] = [
     { id: "to_1", userId: "u_marco", from: ymd(addDays(now, 5)), to: ymd(addDays(now, 9)), kind: "vacation", note: "Holidays" },
     { id: "to_2", userId: "u_luca", from: ymd(subDays(now, 1)), to: ymd(subDays(now, 1)), kind: "sick" },
     { id: "to_3", userId: "u_elena", from: ymd(subDays(now, 12)), to: ymd(subDays(now, 10)), kind: "vacation" },
   ];
+
+  // explicit teams for the client projects: the people assigned, allocated or planned there (internal projects stay open)
+  for (const pid of ["p_jig", "p_mob", "p_data"]) {
+    const p = projects.find((x) => x.id === pid)!;
+    const ids = new Set<string>();
+    for (const i of issues) if (i.projectId === pid && i.assigneeId) ids.add(i.assigneeId);
+    for (const a of allocations) if (a.projectId === pid) ids.add(a.userId);
+    for (const o of offers) if (o.projectId === pid) for (const l of o.lines) for (const act of l.activities ?? []) for (const [uid, h] of Object.entries(act.effort)) if (h) ids.add(uid);
+    ids.delete(p.leadId);
+    p.memberIds = [...ids];
+  }
 
   return {
     users,
@@ -537,6 +580,7 @@ export function buildSeed(now: Date = new Date()): SeedData {
     issues,
     timeEntries,
     offers,
+    offerBaselines,
     allocations,
     holidays,
     timeOffs,

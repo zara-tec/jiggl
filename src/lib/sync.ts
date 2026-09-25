@@ -10,7 +10,7 @@ import type { WorkspaceSettings } from "./types";
  * and deletes to /api/sync in debounced batches. Last write wins.
  */
 
-export const COLLECTIONS = ["users", "clients", "tags", "projects", "sprints", "issues", "timeEntries", "offers", "allocations", "holidays", "timeOffs"] as const;
+export const COLLECTIONS = ["users", "clients", "tags", "projects", "sprints", "issues", "timeEntries", "offers", "offerBaselines", "allocations", "holidays", "timeOffs"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 
 type Entity = { id: string };

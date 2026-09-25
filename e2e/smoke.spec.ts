@@ -10,6 +10,7 @@ const ROUTES = [
   "/projects/JIG/list",
   "/projects/JIG/time",
   "/projects/JIG/offers",
+  "/projects/JIG/offers/o_jig_1",
   "/projects/JIG/budget",
   "/projects/JIG/reports",
   "/projects/JIG/settings",
@@ -71,6 +72,33 @@ test.describe("demo workspace", () => {
     await expect(main).not.toContainText("PROSPECT");
   });
 
+  test("the forecast matrix values effort per member and baselines track the changes", async ({ page }) => {
+    await page.goto("/projects/JIG/offers/o_jig_1");
+    const main = page.locator("main");
+    await main.getByRole("tab", { name: "Forecast" }).click();
+    await expect(main.getByPlaceholder("Activity").first()).toHaveValue("Timer and manual entries");
+    await expect(main).toContainText("Unsold");
+    await expect(main).toContainText("324h");
+    // more effort for one member on one activity moves the totals
+    const cell = main.getByLabel("Sara Conti on Idle detection and reminders");
+    await cell.fill("20");
+    await cell.press("Enter");
+    await expect(main).toContainText("332h");
+    await expect(page.locator("header").getByText("Saved")).toBeVisible();
+
+    await main.getByRole("tab", { name: "Baselines" }).click();
+    await expect(main).toContainText("Since “Order”");
+    await expect(main).toContainText("Joined");
+    await main.getByRole("button", { name: "Take baseline" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText("Take a baseline");
+    await dialog.getByRole("button", { name: "Take baseline" }).click();
+    await expect(main).toContainText("Revision 2");
+    await expect(main).toContainText("Since “Revision 2”");
+    await expect(main).toContainText("No line changed since this baseline.");
+    await expect(page.locator("header").getByText("Saved")).toBeVisible();
+  });
+
   test("the budget page compares sold and consumed", async ({ page }) => {
     await page.goto("/projects/JIG/budget");
     const main = page.locator("main");
@@ -79,5 +107,7 @@ test.describe("demo workspace", () => {
     await expect(main).toContainText("Burn");
     await expect(main).toContainText("Pipeline");
     await expect(main).toContainText("Consumed vs sold");
+    await expect(main).toContainText("Forecast at completion");
+    await expect(main).toContainText("Expected margin");
   });
 });

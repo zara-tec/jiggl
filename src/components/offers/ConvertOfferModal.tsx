@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import type { Offer, OfferLineIssueType } from "@/lib/types";
-import { lineAmount, offerTotals } from "@/lib/offers";
+import { isOrder, lineAmount, offerTotals } from "@/lib/offers";
 import { formatMoney } from "@/lib/rates";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +44,7 @@ export function ConvertOfferModal({ open, onClose, offer }: { open: boolean; onC
   if (!project) return null;
   const included = rows.filter((r) => r.include).length;
   const totals = offerTotals(offer);
+  const wasOrder = isOrder(offer) && !done;
 
   const run = () => {
     const created = convert(offer.id, rows);
@@ -54,7 +55,7 @@ export function ConvertOfferModal({ open, onClose, offer }: { open: boolean; onC
     <Modal
       open={open}
       onClose={onClose}
-      title={done ? "Order created" : "Convert to order"}
+      title={done ? (wasOrder ? "Work items created" : "Order created") : wasOrder ? "Create work items" : "Convert to order"}
       width={760}
       footer={
         done ? (
@@ -74,7 +75,7 @@ export function ConvertOfferModal({ open, onClose, offer }: { open: boolean; onC
     >
       {done ? (
         <>
-          <SectionMessage appearance="success" title={`${offer.number} is now an order`}>
+          <SectionMessage appearance="success" title={`${offer.number} is an order`}>
             {done.length} work item{done.length === 1 ? "" : "s"} created in {project.name}. Sold hours became the original estimate, planned dates became start and due dates, and every item is labelled {offer.number}.
           </SectionMessage>
           <ul className="mt-4 divide-y divide-ds-border rounded-ds border border-ds-border text-sm">
@@ -91,7 +92,7 @@ export function ConvertOfferModal({ open, onClose, offer }: { open: boolean; onC
           <div className="mb-4 flex items-center gap-3 rounded-ds bg-ds-surface-sunken px-3 py-2 text-sm">
             <ProjectAvatar name={project.name} color={project.color} size={24} />
             <span>
-              Work items will be created in <b>{project.name}</b>{project.status === "prospect" ? ", which becomes Active" : ""}.
+              Work items will be created in <b>{project.name}</b>{project.status === "prospect" ? ", which becomes Active" : ""}.{!wasOrder && " A baseline of the offer is taken when it becomes an order."}
             </span>
             <span className="ml-auto text-ds-text-subtle">
               {formatMoney(totals.total, settings.currency)} · {totals.hours}h
@@ -136,7 +137,7 @@ export function ConvertOfferModal({ open, onClose, offer }: { open: boolean; onC
                       />
                     </td>
                     <td className="py-1.5 pr-3">
-                      <UserSelect value={row.assigneeId} onChange={(v) => setRows((rs) => rs.map((r) => (r.lineId === l.id ? { ...r, assigneeId: v } : r)))} />
+                      <UserSelect value={row.assigneeId} onChange={(v) => setRows((rs) => rs.map((r) => (r.lineId === l.id ? { ...r, assigneeId: v } : r)))} projectId={offer.projectId} />
                     </td>
                     <td className="tabular-nums py-1.5 text-right text-ds-text-subtle">
                       {l.hours}h

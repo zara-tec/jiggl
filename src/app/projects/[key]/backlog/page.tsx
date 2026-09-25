@@ -360,7 +360,7 @@ function BacklogRowContent({ issue, onOpen }: { issue: Issue; onOpen?: (i: Issue
         <span className="inline-flex w-8 justify-center">
           <PointsBadge points={issue.storyPoints} />
         </span>
-        <UserSelect value={issue.assigneeId} onChange={(v) => update(issue.id, { assigneeId: v })} avatarOnly className="w-auto" />
+        <UserSelect value={issue.assigneeId} onChange={(v) => update(issue.id, { assigneeId: v })} avatarOnly className="w-auto" projectId={issue.projectId} />
       </div>
     </div>
   );

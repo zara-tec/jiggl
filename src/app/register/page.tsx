@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/misc";
 import { AuthCard, AuthField } from "@/components/layout/AuthCard";
+import { describeRegistration, type InstanceSettings } from "@/lib/registration";
 
 export default function RegisterPage() {
   const [name, setName] = React.useState("");
@@ -14,6 +15,21 @@ export default function RegisterPage() {
   const [demo, setDemo] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [policy, setPolicy] = React.useState<string | null>(null);
+
+  // the installation may limit who can sign up: say so before the form is filled
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/instance", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: InstanceSettings | null) => {
+        if (!cancelled && j) setPolicy(describeRegistration(j));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +62,7 @@ export default function RegisterPage() {
         </>
       }
     >
+      {policy && <div className="mb-4 rounded-ds bg-ds-information px-3 py-2 text-sm">{policy}</div>}
       <form onSubmit={submit}>
         <AuthField label="Full name">
           <input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="ds-input" />

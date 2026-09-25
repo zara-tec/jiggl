@@ -9,7 +9,9 @@ import { FileText, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useProjectByKey, useProjectOffers } from "@/hooks/useData";
 import { OPEN_OFFER_STATUSES, offerTotals } from "@/lib/offers";
+import { currentForecast } from "@/lib/forecast";
 import { formatDays, formatMoney } from "@/lib/rates";
+import { cn } from "@/lib/utils";
 import { Page } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -64,6 +66,7 @@ export default function ProjectOffersPage({ params }: PageProps<"/projects/[key]
               <th className="border-b border-ds-border py-2 font-semibold">Owner</th>
               <th className="border-b border-ds-border py-2 text-right font-semibold">Lines</th>
               <th className="border-b border-ds-border py-2 text-right font-semibold">Hours</th>
+              <th className="border-b border-ds-border py-2 text-right font-semibold">Forecast</th>
               <th className="border-b border-ds-border py-2 text-right font-semibold">Total</th>
               <th className="border-b border-ds-border py-2 font-semibold">Issued</th>
               <th className="border-b border-ds-border py-2 font-semibold">Valid until</th>
@@ -72,6 +75,7 @@ export default function ProjectOffersPage({ params }: PageProps<"/projects/[key]
           <tbody>
             {offers.map((o) => {
               const t = offerTotals(o);
+              const f = currentForecast(o, users, project);
               const owner = users.find((u) => u.id === o.ownerId);
               return (
                 <tr key={o.id} className="hover:bg-ds-surface-hovered">
@@ -81,6 +85,7 @@ export default function ProjectOffersPage({ params }: PageProps<"/projects/[key]
                   <td className="border-b border-ds-border py-2 pr-3"><span className="flex items-center gap-2"><Avatar user={owner} size="xs" /> {owner?.name}</span></td>
                   <td className="tabular-nums border-b border-ds-border py-2 text-right">{o.lines.length}</td>
                   <td className="tabular-nums border-b border-ds-border py-2 text-right">{t.hours}h</td>
+                  <td className={cn("tabular-nums border-b border-ds-border py-2 text-right", f.hours > t.hours && "text-ds-text-danger")}>{f.hours ? `${Math.round(f.hours * 10) / 10}h` : <span className="text-ds-text-subtlest">—</span>}</td>
                   <td className="tabular-nums border-b border-ds-border py-2 text-right font-semibold">{formatMoney(t.total, settings.currency)}</td>
                   <td className="border-b border-ds-border py-2 pl-3 text-ds-text-subtle">{format(parseISO(o.issueDate), "d MMM yyyy")}</td>
                   <td className="border-b border-ds-border py-2 text-ds-text-subtle">{o.validUntil ? format(parseISO(o.validUntil), "d MMM yyyy") : "—"}</td>

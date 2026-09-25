@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OFFER_STATUS_META, OFFER_TRANSITIONS, OPEN_OFFER_STATUSES, defaultLineHours, isOfferEditable, lineAmount, nextOfferNumber, offerTotals } from "./offers";
+import { OFFER_STATUS_META, OFFER_TRANSITIONS, OPEN_OFFER_STATUSES, defaultLineHours, isOrder, lineAmount, nextOfferNumber, offerTotals } from "./offers";
 import type { OfferStatus } from "./types";
 import { makeLine, makeOffer } from "@/test/fixtures";
 
@@ -54,8 +54,8 @@ describe("status model", () => {
     expect(OPEN_OFFER_STATUSES).toEqual(["draft", "sent", "accepted"]);
   });
 
-  it("isOfferEditable is false only for orders", () => {
-    for (const status of STATUSES) expect(isOfferEditable(makeOffer({ id: "o", status }))).toBe(status !== "ordered");
+  it("isOrder is true only for orders", () => {
+    for (const status of STATUSES) expect(isOrder(makeOffer({ id: "o", status }))).toBe(status === "ordered");
   });
 });
 

@@ -16,6 +16,8 @@ import { Toggle } from "@/components/ui/misc";
 import { UserSelect } from "@/components/issues/fields";
 import { Avatar, ProjectAvatar } from "@/components/ui/Avatar";
 import { RateCell, RateModal } from "@/components/rates/RateModal";
+import { ProjectTeamSection } from "@/components/team/ProjectTeamSection";
+import { projectTeam } from "@/lib/team";
 
 type RateTarget = { kind: "project" } | { kind: "member"; userId: string; rate: "cost" | "billing" };
 
@@ -48,6 +50,8 @@ export default function ProjectSettingsPage({ params }: PageProps<"/projects/[ke
   };
 
   const projectEntries = entries.filter((e) => e.projectId === project.id);
+  const team = projectTeam(project, users);
+  const ratesUsers = [...team, ...users.filter((u) => !team.includes(u) && projectEntries.some((e) => e.userId === u.id))];
   const defaultBilling = currentRate(project.billingRates);
   const targetUser = target?.kind === "member" ? users.find((u) => u.id === target.userId) : undefined;
 
@@ -135,6 +139,8 @@ export default function ProjectSettingsPage({ params }: PageProps<"/projects/[ke
           <Toggle checked={project.billable} onChange={(v) => update(project.id, { billable: v })} /> New time entries are billable by default
         </label>
 
+        <ProjectTeamSection project={project} />
+
         <h3 className="ds-heading-sm mb-2 mt-6">Member rates</h3>
         <table className="w-full text-sm">
           <thead>
@@ -146,13 +152,13 @@ export default function ProjectSettingsPage({ params }: PageProps<"/projects/[ke
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {ratesUsers.map((u) => {
               const mr = project.memberRates?.[u.id] ?? {};
               const hours = projectEntries.filter((e) => e.userId === u.id).length;
               return (
                 <tr key={u.id}>
                   <td className="border-b border-ds-border py-2 pr-4">
-                    <span className="flex items-center gap-2"><Avatar user={u} size="sm" /> {u.name}</span>
+                    <span className="flex items-center gap-2"><Avatar user={u} size="sm" /> {u.name}{!team.includes(u) && <span className="text-xs text-ds-text-subtlest">not in the team, has hours here</span>}</span>
                   </td>
                   <td className="border-b border-ds-border py-2 pr-4">
                     <RateCell periods={mr.cost} inherited={currentRate(u.costRates)} currency={settings.currency} label={mr.cost?.length ? "override" : undefined} onChange={() => setTarget({ kind: "member", userId: u.id, rate: "cost" })} onReset={() => resetMemberRate(project.id, u.id, "cost")} />

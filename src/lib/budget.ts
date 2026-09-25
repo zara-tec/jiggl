@@ -1,6 +1,7 @@
 import { addDays, differenceInCalendarDays, eachWeekOfInterval, format, max as maxDate, min as minDate, parseISO, startOfDay, startOfWeek, subWeeks } from "date-fns";
-import type { ID, Issue, Offer, OfferLine, Project, TimeEntry, User, WorkspaceSettings } from "./types";
+import type { ID, Issue, Offer, OfferBaseline, OfferLine, Project, TimeEntry, User, WorkspaceSettings } from "./types";
 import { OPEN_OFFER_STATUSES, lineAmount, offerTotals } from "./offers";
+import { baselineForecast, currentForecast } from "./forecast";
 import { billingRateFor, costRateFor } from "./rates";
 import { entryDuration } from "./utils";
 
@@ -27,12 +28,27 @@ export interface LineBudget {
 
 export type Health = "none" | "ok" | "warn" | "over";
 
+/** The orders' forecast (who will spend what) valued at today's rates */
+export interface BudgetForecast {
+  hours: number;
+  cost: number;
+  unsoldHours: number;
+  unsoldCost: number;
+  /** fixed price: sold amount; T&M: forecast billing */
+  revenue: number;
+  /** expected margin at completion: revenue minus forecast cost */
+  margin: number;
+  /** the same figures frozen in the order baselines (when every order has one) */
+  atOrder?: { hours: number; cost: number; margin: number };
+}
+
 export interface ProjectBudget {
   sold: { hours: number; amount: number; orders: number };
   consumed: Money;
   lines: LineBudget[];
   unattributed: Money & { entries: number };
   pipeline: { amount: number; hours: number; offers: number };
+  forecast: BudgetForecast;
   /** Average consumed hours per week over the last 4 weeks */
   burnPerWeek: number;
   /** Estimated date when sold hours run out at the current burn rate */
@@ -76,6 +92,7 @@ export function computeProjectBudget(args: {
   users: User[];
   projects: Project[];
   settings: WorkspaceSettings;
+  baselines?: OfferBaseline[];
   now?: Date;
 }): ProjectBudget {
   const { project, settings } = args;
@@ -149,6 +166,31 @@ export function computeProjectBudget(args: {
   const pctAmount = soldAmount ? Math.round((consumed.value / soldAmount) * 100) : 0;
   const pipelineHours = open.reduce((a, o) => a + offerTotals(o).hours, 0);
 
+  // forecast at completion: the orders' matrices at today's rates, and what they were when ordered
+  const forecast: BudgetForecast = { hours: 0, cost: 0, unsoldHours: 0, unsoldCost: 0, revenue: 0, margin: 0 };
+  const atOrder = { hours: 0, cost: 0, margin: 0 };
+  let allBaselined = orders.length > 0;
+  const todayIso = format(now, "yyyy-MM-dd");
+  for (const o of orders) {
+    const f = currentForecast(o, args.users, project, todayIso);
+    forecast.hours += f.hours;
+    forecast.cost += f.cost;
+    forecast.unsoldHours += f.unsoldHours;
+    forecast.unsoldCost += f.unsoldCost;
+    forecast.revenue += f.revenue;
+    forecast.margin += f.margin;
+    const b = args.baselines?.find((x) => x.offerId === o.id && x.kind === "order");
+    if (!b) {
+      allBaselined = false;
+      continue;
+    }
+    const bf = baselineForecast(b, project.pricing);
+    atOrder.hours += bf.hours;
+    atOrder.cost += bf.cost;
+    atOrder.margin += bf.margin;
+  }
+  if (allBaselined) forecast.atOrder = atOrder;
+
   void settings;
   return {
     sold: { hours: soldHours, amount: soldAmount, orders: orders.length },
@@ -156,6 +198,7 @@ export function computeProjectBudget(args: {
     lines,
     unattributed,
     pipeline: { amount: open.reduce((a, o) => a + offerTotals(o).total, 0), hours: pipelineHours, offers: open.length },
+    forecast,
     burnPerWeek,
     runOut,
     health: healthOf(project.pricing === "tm" ? pctHours : Math.max(pctHours, pctAmount), soldHours > 0 || soldAmount > 0),

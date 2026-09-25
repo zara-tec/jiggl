@@ -337,7 +337,7 @@ export function IssueView({ issueId, variant, onClose }: { issueId: string; vari
             {detailsOpen && (
               <div className="space-y-1 border-t border-ds-border px-3 py-3">
                 <DetailRow label="Assignee">
-                  <UserSelect value={issue.assigneeId} onChange={(v) => update(issue.id, { assigneeId: v })} showAssignToMe />
+                  <UserSelect value={issue.assigneeId} onChange={(v) => update(issue.id, { assigneeId: v })} showAssignToMe projectId={issue.projectId} />
                 </DetailRow>
                 <DetailRow label="Labels">
                   <LabelsField value={issue.labels} onChange={(v) => update(issue.id, { labels: v })} />
@@ -428,7 +428,7 @@ function ChildRow({ child }: { child: Issue }) {
       <Link href={`/browse/${child.key}`} className={cn("min-w-0 flex-1 truncate text-sm hover:underline", child.status === "done" && "text-ds-text-subtlest line-through")}>
         {child.summary}
       </Link>
-      <UserSelect value={child.assigneeId} onChange={(v) => update(child.id, { assigneeId: v })} avatarOnly className="w-auto" />
+      <UserSelect value={child.assigneeId} onChange={(v) => update(child.id, { assigneeId: v })} avatarOnly className="w-auto" projectId={child.projectId} />
       <StatusSelect value={child.status} onChange={(v) => update(child.id, { status: v })} compact />
     </div>
   );

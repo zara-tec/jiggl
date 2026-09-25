@@ -164,7 +164,7 @@ export function CreateIssueModal() {
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className="ds-input resize-y" placeholder="Add a description..." />
       </Field>
       <Field label="Assignee">
-        <UserSelect value={assigneeId} onChange={setAssigneeId} appearance="default" showAssignToMe />
+        <UserSelect value={assigneeId} onChange={setAssigneeId} appearance="default" showAssignToMe projectId={projectId} />
       </Field>
       <div className="grid grid-cols-2 gap-x-4">
         <Field label="Priority">

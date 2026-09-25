@@ -101,6 +101,42 @@ describe("demo seed", () => {
     }
   });
 
+  it("dependent lines start after their predecessor ends, on a working day", () => {
+    let found = 0;
+    for (const o of seed.offers) {
+      for (const l of o.lines) {
+        if (!l.predecessorId) continue;
+        const pred = o.lines.find((x) => x.id === l.predecessorId);
+        expect(pred?.plannedEnd).toBeTruthy();
+        expect(l.plannedStart! > pred!.plannedEnd!).toBe(true);
+        expect([0, 6]).not.toContain(new Date(l.plannedStart!).getDay());
+        found++;
+      }
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it("client projects have explicit teams that cover their assignees, allocations and forecasts; internal ones are open", () => {
+    const explicit = seed.projects.filter((p) => p.memberIds);
+    expect(explicit.map((p) => p.key).sort()).toEqual(["DATA", "JIG", "MOB"]);
+    // at least one team is smaller than the workspace, so the demo shows the restriction
+    expect(explicit.some((p) => new Set([p.leadId, ...p.memberIds!]).size < seed.users.length)).toBe(true);
+    for (const p of explicit) {
+      const team = new Set([p.leadId, ...p.memberIds!]);
+      expect(p.memberIds).not.toContain(p.leadId);
+      for (const id of p.memberIds!) expect(users.has(id)).toBe(true);
+      for (const i of seed.issues) if (i.projectId === p.id && i.assigneeId) expect(team.has(i.assigneeId)).toBe(true);
+      for (const a of seed.allocations) if (a.projectId === p.id) expect(team.has(a.userId)).toBe(true);
+      for (const o of seed.offers) if (o.projectId === p.id) for (const l of o.lines) for (const act of l.activities ?? []) for (const uid of Object.keys(act.effort)) expect(team.has(uid)).toBe(true);
+    }
+  });
+
+  it("has company closures as ranges", () => {
+    const closures = seed.holidays.filter((h) => h.kind === "closure");
+    expect(closures.length).toBeGreaterThan(0);
+    for (const c of closures) expect(c.to! > c.date).toBe(true);
+  });
+
   it("allocations, time off and holidays are consistent", () => {
     for (const a of seed.allocations) {
       expect(users.has(a.userId)).toBe(true);
@@ -114,6 +150,9 @@ describe("demo seed", () => {
       expect(users.has(t.userId)).toBe(true);
       expect(t.to >= t.from).toBe(true);
     }
-    for (const h of seed.holidays) expect(h.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    for (const h of seed.holidays) {
+      expect(h.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      if (h.to) expect(h.to >= h.date).toBe(true);
+    }
   });
 });
