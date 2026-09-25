@@ -83,16 +83,16 @@ export default function TimelinePage({ params }: PageProps<"/projects/[key]/time
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 px-8 pb-3 pt-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-page pb-3 pt-4">
         <span className="text-xs text-ds-text-subtlest">Epics and their child work items across time. Dashed bars are planned lines from open offers, not yet converted into work.</span>
         <div className="ml-auto flex items-center gap-2">
           <Button appearance="subtle" onClick={() => scrollRef.current?.scrollTo({ left: Math.max(0, differenceInCalendarDays(today, rangeStart) * DAY_W - 300), behavior: "smooth" })}>Today</Button>
           <Button appearance="primary" iconBefore={<Plus />} onClick={() => openCreate({ projectId: project.id, type: "epic" })}>Create epic</Button>
         </div>
       </div>
-      <div className="mx-8 mb-6 flex min-h-0 flex-1 overflow-hidden rounded-ds-md border border-ds-border">
+      <div className="mx-[var(--page-gutter)] mb-6 flex min-h-0 flex-1 overflow-hidden rounded-ds-md border border-ds-border">
         {/* left list */}
-        <div className="w-80 shrink-0 border-r border-ds-border bg-ds-surface">
+        <div className="w-44 shrink-0 border-r border-ds-border bg-ds-surface sm:w-80">
           <div className="flex h-12 items-center border-b border-ds-border px-3 text-xs font-semibold text-ds-text-subtle">Work item</div>
           <div className="overflow-hidden">
             {rows.map((r) => (

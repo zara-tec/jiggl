@@ -43,8 +43,9 @@ export default function FiltersPage() {
   return (
     <>
       <PageHeader title="Filters" />
-      <div className="flex min-h-0 flex-1 gap-6 overflow-hidden px-8 pb-6 pt-4">
-        <aside className="w-72 shrink-0 overflow-y-auto">
+      {/* below 1024px the filter list sits above the results and the whole page scrolls */}
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-page pb-6 pt-4 lg:flex-row lg:overflow-hidden">
+        <aside className="shrink-0 lg:w-72 lg:overflow-y-auto">
           <div className="ds-heading-xxs mb-2 text-ds-text-subtlest">Starred</div>
           {filters.filter((x) => x.starred).map((x) => (
             <FilterItem key={x.id} f={x} active={active === x.id} onClick={() => setActive(x.id)} count={issues.filter(x.fn).length} />
@@ -54,7 +55,7 @@ export default function FiltersPage() {
             <FilterItem key={x.id} f={x} active={active === x.id} onClick={() => setActive(x.id)} count={issues.filter(x.fn).length} />
           ))}
         </aside>
-        <div className="min-w-0 flex-1 overflow-y-auto">
+        <div className="min-w-0 lg:flex-1 lg:overflow-y-auto">
           <div className="mb-1 flex items-center gap-2">
             <h2 className="ds-heading-md">{f.name}</h2>
             {f.starred && <Star size={14} className="fill-ds-star text-ds-star" />}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CircleHelp, Menu, Play, Plus, Search, Settings, Square, Grip, LogOut, RotateCcw, Timer, Check, Building2, CloudOff, CloudUpload, Cloud, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
+import { Bell, CircleHelp, Menu, MoreHorizontal, Play, Plus, Search, Settings, Square, Grip, LogOut, RotateCcw, Timer, Check, Building2, CloudOff, CloudUpload, Cloud, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
 import { useSyncStatus } from "@/lib/sync";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useStore } from "@/lib/store";
@@ -16,9 +16,9 @@ import { DropdownMenu, MenuGroup, MenuItem, MenuSeparator, Popover } from "@/com
 import { Kbd } from "@/components/ui/misc";
 import { IssueTypeIcon } from "@/components/issues/icons";
 import { ProjectSelect } from "@/components/issues/fields";
+import { SIDEBAR_TOGGLE_ID, toggleNavigation } from "./Sidebar";
 
 export function TopBar() {
-  const toggleSidebar = useStore((s) => s.toggleSidebar);
   const openCreate = useStore((s) => s.openCreateIssue);
   const hydrated = useHydrated();
 
@@ -41,12 +41,12 @@ export function TopBar() {
   }, [openCreate]);
 
   return (
-    <header className="flex h-[var(--topbar-height)] shrink-0 items-center gap-2 border-b border-ds-border bg-ds-surface px-3">
-      <IconButton icon={<Menu />} label="Toggle sidebar" onClick={toggleSidebar} />
+    <header className="flex h-[var(--topbar-height)] shrink-0 items-center gap-1 border-b border-ds-border bg-ds-surface px-2 md:gap-2 md:px-3">
+      <IconButton id={SIDEBAR_TOGGLE_ID} icon={<Menu />} label="Toggle sidebar" onClick={toggleNavigation} />
       <IconButton icon={<Grip />} label="Switch apps" className="hidden md:inline-flex" />
-      <Link href="/for-you" className="mr-2 flex items-center gap-2 rounded-ds px-1.5 py-1 hover:bg-ds-neutral-subtle-hovered">
+      <Link href="/for-you" className="flex shrink-0 items-center gap-2 rounded-ds px-1 py-1 hover:bg-ds-neutral-subtle-hovered lg:mr-2 lg:px-1.5" aria-label="Jiggl home">
         <Logo />
-        <span className="text-[15px] font-bold tracking-tight text-ds-text">Jiggl</span>
+        <span className="hidden text-[15px] font-bold tracking-tight text-ds-text lg:inline">Jiggl</span>
       </Link>
 
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
@@ -59,14 +59,39 @@ export function TopBar() {
       <div className="flex shrink-0 items-center gap-1">
         {hydrated && <SyncIndicator />}
         {hydrated && <TopBarTimer />}
-        <IconButton icon={<Bell />} label="Notifications" />
-        <IconButton icon={<CircleHelp />} label="Help" />
-        <Link href="/settings">
-          <IconButton icon={<Settings />} label="Settings" />
-        </Link>
-        {hydrated && <ProfileMenu />}
+        <div className="hidden items-center gap-1 md:flex">
+          <TopBarActions hydrated={hydrated} />
+        </div>
+        <MoreActions hydrated={hydrated} />
       </div>
     </header>
+  );
+}
+
+function TopBarActions({ hydrated }: { hydrated: boolean }) {
+  return (
+    <>
+      <IconButton icon={<Bell />} label="Notifications" />
+      <IconButton icon={<CircleHelp />} label="Help" />
+      <Link href="/settings">
+        <IconButton icon={<Settings />} label="Settings" />
+      </Link>
+      {hydrated && <ProfileMenu />}
+    </>
+  );
+}
+
+/** Below 768px the actions on the right move into a "Show more" popover, as a single row of icons. */
+function MoreActions({ hydrated }: { hydrated: boolean }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <IconButton ref={ref} icon={<MoreHorizontal />} label="Show more" isSelected={open} onClick={() => setOpen((o) => !o)} className="md:hidden" />
+      <Popover open={open} onClose={() => setOpen(false)} anchorRef={ref} align="end" className="flex items-center gap-1 p-1.5">
+        <TopBarActions hydrated={hydrated} />
+      </Popover>
+    </>
   );
 }
 
@@ -218,14 +243,17 @@ function TopBarTimer() {
 
   if (running) {
     return (
-      <div className="mr-1 flex h-8 items-center gap-1 rounded-ds border border-ds-border bg-ds-surface pl-2 pr-1">
+      <div className="flex h-8 items-center gap-1 rounded-ds border border-ds-border bg-ds-surface pl-2 pr-1 md:mr-1">
         <span className="size-2 rounded-full bg-ds-danger-bold timer-pulse" />
-        <Link href="/timer" className="flex min-w-0 max-w-64 items-center gap-1.5 text-sm hover:underline">
+        {/* the description needs room: below 1024px only the clock is left */}
+        <Link href="/timer" className="hidden min-w-0 max-w-64 items-center gap-1.5 text-sm hover:underline lg:flex">
           {project && <span className="size-2 shrink-0 rounded-full" style={{ background: project.color }} />}
           <span className="truncate">{running.description || issue?.summary || "(no description)"}</span>
           {issue && <span className="shrink-0 text-xs text-ds-text-subtlest">{issue.key}</span>}
         </Link>
-        <span className="tabular-nums ml-1 text-sm font-semibold">{formatDurationClock(entryDuration(running, now))}</span>
+        <Link href="/timer" className="tabular-nums ml-1 text-sm font-semibold hover:underline lg:pointer-events-none lg:no-underline">
+          {formatDurationClock(entryDuration(running, now))}
+        </Link>
         <button
           type="button"
           onClick={stop}
@@ -244,7 +272,8 @@ function TopBarTimer() {
         ref={ref}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={cn("mr-1 inline-flex h-8 items-center gap-1.5 rounded-ds px-2 text-sm font-medium text-ds-text hover:bg-ds-neutral-subtle-hovered", open && "bg-ds-neutral-subtle-hovered")}
+        aria-label="Start timer"
+        className={cn("inline-flex h-8 items-center gap-1.5 rounded-ds px-2 text-sm font-medium text-ds-text hover:bg-ds-neutral-subtle-hovered md:mr-1", open && "bg-ds-neutral-subtle-hovered")}
       >
         <span className="inline-flex size-5 items-center justify-center rounded-full bg-ds-brand-bold text-ds-text-on-brand">
           <Play size={10} fill="currentColor" />
@@ -332,7 +361,7 @@ function GlobalSearch() {
   };
 
   return (
-    <div ref={ref} className="relative w-full max-w-[780px]">
+    <div ref={ref} className="relative w-full min-w-0 max-w-[780px]">
       <Search size={16} className="pointer-events-none absolute left-2.5 top-2 text-ds-icon-subtle" />
       <input
         id="global-search"
@@ -354,12 +383,12 @@ function GlobalSearch() {
           }
         }}
         placeholder="Search"
-        className="h-8 w-full rounded-ds border border-ds-border-input bg-ds-input pl-8 pr-10 text-sm text-ds-text placeholder:text-ds-text-subtlest hover:bg-ds-surface-sunken focus:border-ds-border-focused focus:outline-none focus:ring-1 focus:ring-ds-border-focused"
+        className="h-8 w-full rounded-ds border border-ds-border-input bg-ds-input pl-8 pr-2 text-sm text-ds-text placeholder:text-ds-text-subtlest md:pr-10 hover:bg-ds-surface-sunken focus:border-ds-border-focused focus:outline-none focus:ring-1 focus:ring-ds-border-focused"
       />
       <span className="pointer-events-none absolute right-2 top-1.5 hidden md:inline">
         <Kbd>/</Kbd>
       </span>
-      <Popover open={open} onClose={() => setOpen(false)} anchorRef={ref} matchWidth className="max-h-[70vh] overflow-y-auto py-2">
+      <Popover open={open} onClose={() => setOpen(false)} anchorRef={ref} matchWidth className="max-h-[70vh] min-w-[min(480px,calc(100vw_-_16px))] overflow-y-auto py-2">
         <MenuGroup title={query ? "Work items" : "Recent work items"}>
           {issueResults.length === 0 && <div className="px-3 py-2 text-sm text-ds-text-subtlest">No work items found</div>}
           {issueResults.map((i) => (

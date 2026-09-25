@@ -76,7 +76,8 @@ export function TimerBar({ className }: { className?: string }) {
   const isManual = mode === "manual" && !running;
 
   return (
-    <div className={cn("flex h-[66px] items-center gap-1 rounded-ds-lg bg-ds-surface px-4 shadow-[0_1px_1px_rgba(9,30,66,0.25),0_0_1px_rgba(9,30,66,0.31)]", className)}>
+    // below 768px the description takes the first line and the controls wrap under it
+    <div className={cn("flex flex-wrap items-center gap-1 rounded-ds-lg bg-ds-surface px-3 py-2 md:h-[66px] md:flex-nowrap md:px-4 md:py-0 shadow-[0_1px_1px_rgba(9,30,66,0.25),0_0_1px_rgba(9,30,66,0.31)]", className)}>
       <input
         value={values.description}
         onChange={(e) => patch({ description: e.target.value })}
@@ -87,15 +88,15 @@ export function TimerBar({ className }: { className?: string }) {
           }
         }}
         placeholder={isManual ? "What have you done?" : "What are you working on?"}
-        className="h-10 min-w-0 flex-1 bg-transparent text-[16px] text-ds-text outline-none placeholder:text-ds-text-subtlest"
+        className="h-10 min-w-0 flex-1 bg-transparent text-[16px] text-ds-text outline-none placeholder:text-ds-text-subtlest max-md:basis-full"
       />
       <ProjectIssuePicker projectId={values.projectId} issueId={values.issueId} onChange={onPickProject} />
       <TagsPicker value={values.tagIds} onChange={(tagIds) => patch({ tagIds })} showNames={false} />
       <BillableToggle value={values.billable} onChange={(billable) => patch({ billable })} />
-      <div className="mx-1 h-8 w-px bg-ds-border" />
+      <div className="mx-1 h-8 w-px bg-ds-border max-md:hidden" />
 
       {isManual ? (
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 max-md:ml-auto">
           <input type="time" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-[74px] rounded-ds border border-transparent bg-transparent px-1 text-center text-sm hover:bg-ds-neutral-subtle-hovered focus:border-ds-border-focused focus:outline-none" />
           <span className="text-ds-text-subtlest">-</span>
           <input type="time" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 w-[74px] rounded-ds border border-transparent bg-transparent px-1 text-center text-sm hover:bg-ds-neutral-subtle-hovered focus:border-ds-border-focused focus:outline-none" />
@@ -109,7 +110,7 @@ export function TimerBar({ className }: { className?: string }) {
           />
         </div>
       ) : (
-        <span className="tabular-nums w-[92px] px-1 text-right text-lg font-semibold text-ds-text">{running ? formatDurationClock(entryDuration(running, now)) : "0:00:00"}</span>
+        <span className="tabular-nums w-[92px] px-1 text-right text-lg font-semibold text-ds-text max-md:ml-auto max-md:w-auto">{running ? formatDurationClock(entryDuration(running, now)) : "0:00:00"}</span>
       )}
 
       {running ? (

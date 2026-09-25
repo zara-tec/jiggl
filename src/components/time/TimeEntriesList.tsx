@@ -131,7 +131,7 @@ function EntryRow({
   if (entry.virtual) return <VirtualRow entry={entry} showUser={showUser} nested={nested} groupCount={groupCount} groupOpen={groupOpen} onToggleGroup={onToggleGroup} overrideTimes={overrideTimes} overrideDuration={overrideDuration} />;
 
   return (
-    <div className={cn("group/row flex h-12 items-center gap-2 px-4 hover:bg-ds-surface-hovered", nested && "pl-12")}>
+    <div className={cn("group/row flex flex-wrap items-center gap-x-1 px-4 py-1.5 md:gap-x-2 hover:bg-ds-surface-hovered md:h-12 md:flex-nowrap md:py-0", nested && "pl-12")}>
       {isGroup ? (
         <button type="button" onClick={onToggleGroup} className="inline-flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-ds border border-ds-border-bold px-1 text-xs font-semibold text-ds-text-subtle hover:bg-ds-neutral-subtle-hovered">
           {groupCount}
@@ -146,15 +146,16 @@ function EntryRow({
         onBlur={() => desc !== entry.description && patchGroup({ description: desc })}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         placeholder="Add description"
-        className="h-8 min-w-0 flex-1 truncate rounded-ds border border-transparent bg-transparent px-1.5 text-sm text-ds-text hover:border-ds-border focus:border-ds-border-focused focus:outline-none placeholder:italic placeholder:text-ds-text-subtlest"
+        // below 768px a row wraps: the description on its own line, project, times and actions under it
+        className="h-8 min-w-0 flex-1 truncate max-md:order-first max-md:basis-full rounded-ds border border-transparent bg-transparent px-1.5 text-sm text-ds-text hover:border-ds-border focus:border-ds-border-focused focus:outline-none placeholder:italic placeholder:text-ds-text-subtlest"
       />
-      <ProjectIssuePicker projectId={entry.projectId} issueId={entry.issueId} onChange={(v) => patchGroup(v)} className="shrink-0" />
+      <ProjectIssuePicker projectId={entry.projectId} issueId={entry.issueId} onChange={(v) => patchGroup(v)} className="shrink-0 max-md:min-w-0 max-md:flex-1 max-md:basis-0" />
       {issue && (
         <Link href={`/browse/${issue.key}`} className="hidden shrink-0 text-ds-icon-subtle hover:text-ds-link lg:inline-flex" title={`Open ${issue.key}`}>
           <ExternalLink size={14} />
         </Link>
       )}
-      <div className="flex w-32 shrink-0 items-center justify-end gap-0.5">
+      <div className="flex shrink-0 items-center justify-end gap-0.5 md:w-32">
         <TagsPicker value={entry.tagIds} onChange={(tagIds) => patchGroup({ tagIds })} showNames={false} />
         {tags.length > 0 && <span className="hidden max-w-24 truncate text-xs text-ds-text-subtle xl:inline">{tags.map((t) => t.name).join(", ")}</span>}
         <BillableToggle value={entry.billable} onChange={(billable) => patchGroup({ billable })} />
@@ -162,13 +163,13 @@ function EntryRow({
       <TimesEditor entry={entry} disabled={isGroup} label={overrideTimes} />
       <DurationEditor entry={entry} seconds={duration} disabled={isGroup} />
       <div className="flex w-16 shrink-0 items-center justify-end gap-0.5">
-        <button type="button" onClick={() => cont(entry.id)} title="Continue" className="inline-flex size-7 items-center justify-center rounded-full text-ds-icon-subtle opacity-0 hover:bg-ds-neutral-subtle-hovered hover:text-ds-text group-hover/row:opacity-100">
+        <button type="button" onClick={() => cont(entry.id)} title="Continue" className="inline-flex size-7 items-center justify-center rounded-full text-ds-icon-subtle opacity-0 hover:bg-ds-neutral-subtle-hovered hover:text-ds-text group-hover/row:opacity-100 max-md:opacity-100">
           <Play size={14} fill="currentColor" />
         </button>
         <DropdownMenu
           align="end"
           trigger={({ ref, toggle, open }) => (
-            <button ref={ref} type="button" onClick={toggle} className={cn("inline-flex size-7 items-center justify-center rounded-ds text-ds-icon-subtle hover:bg-ds-neutral-subtle-hovered hover:text-ds-text", open ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}>
+            <button ref={ref} type="button" onClick={toggle} className={cn("inline-flex size-7 items-center justify-center rounded-ds text-ds-icon-subtle hover:bg-ds-neutral-subtle-hovered hover:text-ds-text", open ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 max-md:opacity-100")}>
               <MoreHorizontal size={16} />
             </button>
           )}
@@ -213,7 +214,7 @@ function VirtualRow({ entry, showUser, nested, groupCount, groupOpen, onToggleGr
   const materialize = useStore((s) => s.materializeEntry);
   const isGroup = !!groupCount && !nested;
   return (
-    <div className={cn("group/row flex h-12 items-center gap-2 px-4 hover:bg-ds-surface-hovered", nested && "pl-12")}>
+    <div className={cn("group/row flex flex-wrap items-center gap-x-1 px-4 py-1.5 md:gap-x-2 hover:bg-ds-surface-hovered md:h-12 md:flex-nowrap md:py-0", nested && "pl-12")}>
       {isGroup ? (
         <button type="button" onClick={onToggleGroup} className="inline-flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-ds border border-ds-border-bold px-1 text-xs font-semibold text-ds-text-subtle hover:bg-ds-neutral-subtle-hovered">
           {groupCount}
@@ -222,23 +223,23 @@ function VirtualRow({ entry, showUser, nested, groupCount, groupOpen, onToggleGr
       ) : (
         showUser && <Avatar user={user} size="sm" title={user?.name} />
       )}
-      <span className="flex min-w-0 flex-1 items-center gap-2 px-1.5 text-sm">
+      <span className="flex h-8 min-w-0 flex-1 items-center gap-2 px-1.5 text-sm max-md:order-first max-md:basis-full">
         <Lozenge>Allocated</Lozenge>
         <span className="truncate text-ds-text-subtle">{entry.description}</span>
         <span className="shrink-0 text-xs text-ds-text-subtlest">{entry.percent}% of the day</span>
       </span>
       {project && (
-        <span className="inline-flex h-8 max-w-[260px] items-center gap-1.5 px-2 text-sm font-medium">
+        <span className="inline-flex h-8 min-w-0 max-w-[260px] items-center gap-1.5 px-2 text-sm font-medium max-md:flex-1 max-md:basis-0">
           <span className="size-2.5 shrink-0 rounded-full" style={{ background: project.color }} />
           <span className="truncate" style={{ color: project.color }}>{project.name}</span>
         </span>
       )}
-      <span className="w-32 shrink-0" />
+      <span className="w-32 shrink-0 max-md:hidden" />
       <span className="tabular-nums hidden w-[118px] shrink-0 px-1.5 text-right text-sm text-ds-text-subtlest md:inline-block">{overrideTimes ?? `${formatTime(entry.start)} - ${entry.stop ? formatTime(entry.stop) : "now"}`}</span>
       <span className="tabular-nums w-[84px] shrink-0 px-1.5 text-right text-sm font-semibold text-ds-text-subtle">{formatDurationClock(overrideDuration ?? entryDuration(entry))}</span>
       <div className="flex w-16 shrink-0 items-center justify-end">
         {!isGroup && (
-          <button type="button" onClick={() => materialize(entry)} title="Convert to a real entry you can edit" className="rounded-ds px-1.5 text-xs text-ds-link opacity-0 hover:underline group-hover/row:opacity-100">
+          <button type="button" onClick={() => materialize(entry)} title="Convert to a real entry you can edit" className="rounded-ds px-1.5 text-xs text-ds-link opacity-0 hover:underline group-hover/row:opacity-100 max-md:opacity-100">
             Edit
           </button>
         )}
@@ -337,7 +338,7 @@ function DurationEditor({ entry, seconds, disabled }: { entry: TimeEntry; second
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className={cn("tabular-nums h-8 w-[84px] shrink-0 rounded-ds border border-transparent bg-transparent px-1.5 text-right text-sm font-semibold text-ds-text focus:border-ds-border-focused focus:outline-none", !disabled && "hover:border-ds-border")}
+      className={cn("tabular-nums h-8 w-[84px] shrink-0 rounded-ds border max-md:w-16 border-transparent bg-transparent px-1.5 text-right text-sm font-semibold text-ds-text focus:border-ds-border-focused focus:outline-none", !disabled && "hover:border-ds-border")}
     />
   );
 }

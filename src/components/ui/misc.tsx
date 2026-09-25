@@ -2,43 +2,119 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, MenuItem } from "./Popover";
 
 /* ---------- Tabs (underline) ---------- */
-export function Tabs({
-  tabs,
-  value,
-  onChange,
-  className,
-}: {
-  tabs: { id: string; label: React.ReactNode; href?: string; badge?: React.ReactNode }[];
-  value: string;
-  onChange?: (id: string) => void;
-  className?: string;
-}) {
+type TabItem = { id: string; label: React.ReactNode; href?: string; badge?: React.ReactNode };
+
+const tabClass = (active: boolean) =>
+  cn(
+    "relative -mb-px flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap px-2 text-sm font-medium transition-colors",
+    active ? "text-ds-text-selected" : "text-ds-text-subtle hover:text-ds-text",
+    "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-t after:bg-ds-brand-bold after:transition-opacity",
+    active ? "after:opacity-100" : "after:opacity-0",
+    "hover:bg-ds-neutral-subtle-hovered rounded-t-ds",
+  );
+
+const TAB_GAP = 4;
+
+/** The tabs that do not fit move into a trailing "More N" menu; the active tab always stays in the row. */
+export function Tabs({ tabs, value, onChange, className }: { tabs: TabItem[]; value: string; onChange?: (id: string) => void; className?: string }) {
+  const router = useRouter();
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [fit, setFit] = React.useState(tabs.length);
+
+  React.useLayoutEffect(() => {
+    const row = rowRef.current;
+    const measure = measureRef.current;
+    if (!row || !measure) return;
+    const compute = () => {
+      const widths = Array.from(measure.children, (c) => (c as HTMLElement).offsetWidth);
+      const more = widths.pop() ?? 0;
+      const available = row.clientWidth;
+      const total = widths.reduce((a, w) => a + w + TAB_GAP, -TAB_GAP);
+      if (total <= available) return setFit(widths.length);
+      let used = more;
+      let n = 0;
+      while (n < widths.length && used + TAB_GAP + widths[n] <= available) used += TAB_GAP + widths[n++];
+      setFit(Math.max(1, n));
+    };
+    compute();
+    // the copy changes size when labels or badges change
+    const ro = new ResizeObserver(compute);
+    ro.observe(row);
+    ro.observe(measure);
+    return () => ro.disconnect();
+  }, []);
+
+  const activeIndex = tabs.findIndex((t) => t.id === value);
+  const visible = activeIndex >= fit ? [...tabs.slice(0, fit - 1), tabs[activeIndex]] : tabs.slice(0, fit);
+  const hidden = tabs.filter((t) => !visible.includes(t));
+
+  const render = (t: TabItem) => {
+    const active = t.id === value;
+    return t.href ? (
+      <Link key={t.id} href={t.href} role="tab" aria-selected={active} className={tabClass(active)}>
+        {t.label}
+        {t.badge}
+      </Link>
+    ) : (
+      <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => onChange?.(t.id)} className={tabClass(active)}>
+        {t.label}
+        {t.badge}
+      </button>
+    );
+  };
+  const moreLabel = (n: number) => (
+    <>
+      More <span className="rounded-lg bg-ds-neutral px-1.5 text-[11px] font-semibold text-ds-text-subtle">{n}</span>
+    </>
+  );
+
   return (
-    <div className={cn("flex items-center gap-1 border-b border-ds-border", className)} role="tablist">
-      {tabs.map((t) => {
-        const active = t.id === value;
-        const cls = cn(
-          "relative -mb-px flex h-9 items-center gap-1.5 whitespace-nowrap px-2 text-sm font-medium transition-colors",
-          active ? "text-ds-text-selected" : "text-ds-text-subtle hover:text-ds-text",
-          "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-t after:bg-ds-brand-bold after:transition-opacity",
-          active ? "after:opacity-100" : "after:opacity-0",
-          "hover:bg-ds-neutral-subtle-hovered rounded-t-ds",
-        );
-        return t.href ? (
-          <Link key={t.id} href={t.href} role="tab" aria-selected={active} className={cls}>
-            {t.label}
-            {t.badge}
-          </Link>
-        ) : (
-          <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => onChange?.(t.id)} className={cls}>
-            {t.label}
-            {t.badge}
-          </button>
-        );
-      })}
+    <div ref={rowRef} className={cn("relative flex min-w-0 items-center gap-1 border-b border-ds-border", className)} role="tablist">
+      {/* off-screen copy used only to measure the natural width of every tab */}
+      <div aria-hidden className="pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden">
+        <div ref={measureRef} className="flex w-max">
+          {tabs.map((t) => (
+            <span key={t.id} className={tabClass(false)}>
+              {t.label}
+              {t.badge}
+            </span>
+          ))}
+          <span className={tabClass(false)}>{moreLabel(tabs.length)}</span>
+        </div>
+      </div>
+      {visible.map(render)}
+      {hidden.length > 0 && (
+        <DropdownMenu
+          align="end"
+          trigger={({ ref, toggle, open }) => (
+            <button ref={ref} type="button" onClick={toggle} aria-expanded={open} className={cn(tabClass(false), open && "bg-ds-neutral-subtle-hovered")}>
+              {moreLabel(hidden.length)}
+            </button>
+          )}
+        >
+          {({ close }) =>
+            hidden.map((t) => (
+              <MenuItem
+                key={t.id}
+                elemAfter={t.badge}
+                onClick={() => {
+                  close();
+                  if (t.href) router.push(t.href);
+                  else onChange?.(t.id);
+                }}
+              >
+                {t.label}
+              </MenuItem>
+            ))
+          }
+        </DropdownMenu>
+      )}
     </div>
   );
 }
@@ -133,7 +209,7 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("shrink-0 px-8 pt-5", className)}>
+    <div className={cn("shrink-0 px-page pt-5", className)}>
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="mb-1 flex items-center gap-1 text-sm text-ds-text-subtle">
           {breadcrumbs.map((b, i) => (
@@ -150,7 +226,7 @@ export function PageHeader({
           ))}
         </nav>
       )}
-      <div className="flex min-h-10 items-center justify-between gap-4">
+      <div className="flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="ds-heading-xl flex min-w-0 items-center gap-2">{title}</h1>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>

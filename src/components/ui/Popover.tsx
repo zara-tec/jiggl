@@ -17,13 +17,23 @@ export interface PopoverProps {
   offset?: number;
 }
 
+/** Lets a popover opened from inside another one count as "inside" for the parent's outside-click check. */
+const NestedPopovers = React.createContext<((el: React.RefObject<HTMLElement | null>) => () => void) | null>(null);
+
 /**
  * Lightweight portal popover positioned relative to an anchor element.
- * Closes on outside click and on Escape.
+ * Closes on outside click and on Escape. It never gets wider than the viewport.
  */
 export function Popover({ open, onClose, anchorRef, children, align = "start", placement = "bottom", className, matchWidth, offset = 4 }: PopoverProps) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [style, setStyle] = React.useState<React.CSSProperties>({ visibility: "hidden" });
+  const nested = React.useRef(new Set<React.RefObject<HTMLElement | null>>());
+  const register = React.useCallback((el: React.RefObject<HTMLElement | null>) => {
+    nested.current.add(el);
+    return () => void nested.current.delete(el);
+  }, []);
+  const registerInParent = React.useContext(NestedPopovers);
+  React.useEffect(() => (open && registerInParent ? registerInParent(ref) : undefined), [open, registerInParent]);
 
   const update = React.useCallback(() => {
     const anchor = anchorRef.current;
@@ -31,7 +41,8 @@ export function Popover({ open, onClose, anchorRef, children, align = "start", p
     if (!anchor || !menu) return;
     const r = anchor.getBoundingClientRect();
     const mh = menu.offsetHeight;
-    const mw = matchWidth ? r.width : menu.offsetWidth;
+    // with matchWidth a min-width class may still make the menu wider than the anchor
+    const mw = matchWidth ? Math.max(r.width, menu.offsetWidth) : menu.offsetWidth;
     let top = placement === "bottom" ? r.bottom + offset : r.top - mh - offset;
     if (placement === "bottom" && top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - offset);
     if (placement === "top" && top < 8) top = r.bottom + offset;
@@ -62,6 +73,7 @@ export function Popover({ open, onClose, anchorRef, children, align = "start", p
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (ref.current?.contains(t) || anchorRef.current?.contains(t)) return;
+      for (const child of nested.current) if (child.current?.contains(t)) return;
       onClose();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -80,8 +92,8 @@ export function Popover({ open, onClose, anchorRef, children, align = "start", p
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div ref={ref} style={style} className={cn("fade-in rounded-ds bg-ds-surface-overlay shadow-ds-overlay", className)} role="dialog">
-      {children}
+    <div ref={ref} style={style} className={cn("fade-in max-w-[calc(100vw_-_16px)] rounded-ds bg-ds-surface-overlay shadow-ds-overlay", className)} role="dialog">
+      <NestedPopovers.Provider value={register}>{children}</NestedPopovers.Provider>
     </div>,
     document.body,
   );

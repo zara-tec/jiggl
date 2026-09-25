@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isAuthPage) return <>{children}</>;
 
   return (
-    <div className="flex h-screen flex-col bg-ds-surface">
+    <div className="flex h-dvh flex-col bg-ds-surface">
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
@@ -78,10 +78,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function ShellSkeleton() {
   return (
-    <div className="animate-pulse px-8 pt-6">
+    <div className="animate-pulse px-page pt-6">
       <div className="mb-3 h-3 w-40 rounded bg-ds-neutral" />
       <div className="mb-8 h-7 w-72 rounded bg-ds-neutral" />
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-24 rounded-ds-lg bg-ds-neutral" />
         ))}
@@ -93,5 +93,5 @@ function ShellSkeleton() {
 
 /** Scrollable page body with the standard page paddings */
 export function Page({ children, className, noPadding }: { children: React.ReactNode; className?: string; noPadding?: boolean }) {
-  return <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${noPadding ? "" : "px-8 pb-10"} ${className ?? ""}`}>{children}</div>;
+  return <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${noPadding ? "" : "px-page pb-10"} ${className ?? ""}`}>{children}</div>;
 }

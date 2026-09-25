@@ -24,10 +24,25 @@ import {
   FileText,
   TrendingUp,
 } from "lucide-react";
+import { create } from "zustand";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/hooks/useHydrated";
 import { cn } from "@/lib/utils";
 import { ProjectAvatar } from "@/components/ui/Avatar";
+
+/** From this width the sidebar is a docked column (Tailwind `lg`); below it, an overlay drawer. */
+const DOCKED = "(min-width: 1024px)";
+
+/** Open state of the overlay drawer: transient, unlike the persisted `ui.sidebarCollapsed` of the docked sidebar. */
+const useDrawer = create<{ open: boolean; setOpen: (open: boolean) => void }>((set) => ({ open: false, setOpen: (open) => set({ open }) }));
+
+/** The top bar toggle: collapses the docked sidebar, or opens and closes the drawer on narrow screens. */
+export function toggleNavigation() {
+  if (window.matchMedia(DOCKED).matches) useStore.getState().toggleSidebar();
+  else useDrawer.setState((s) => ({ open: !s.open }));
+}
+
+export const SIDEBAR_TOGGLE_ID = "sidebar-toggle";
 import { IssueTypeIcon } from "@/components/issues/icons";
 
 function NavItem({
@@ -132,10 +147,45 @@ export function Sidebar() {
   const starredIssues = starredIssueIds.map((id) => issues.find((i) => i.id === id)).filter(Boolean) as typeof issues;
   const starredProjects = projects.filter((p) => p.starred);
 
-  if (collapsed) return null;
+  const drawerOpen = useDrawer((s) => s.open);
+  const setDrawerOpen = useDrawer((s) => s.setOpen);
+  const ref = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => setDrawerOpen(false), [pathname, setDrawerOpen]);
+
+  React.useEffect(() => {
+    if (!drawerOpen) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element;
+      if (ref.current?.contains(t) || t.closest(`#${SIDEBAR_TOGGLE_ID}`)) return;
+      setDrawerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
+    const mq = window.matchMedia(DOCKED);
+    const onDocked = () => mq.matches && setDrawerOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    mq.addEventListener("change", onDocked);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+      mq.removeEventListener("change", onDocked);
+    };
+  }, [drawerOpen, setDrawerOpen]);
 
   return (
-    <aside className="flex w-[var(--sidebar-width)] shrink-0 flex-col border-r border-ds-border bg-ds-surface">
+    <aside
+      ref={ref}
+      // a click on a link to the current page does not change the pathname, so close here too
+      onClick={(e) => (e.target as Element).closest("a") && setDrawerOpen(false)}
+      className={cn(
+        "flex-col border-ds-border bg-ds-surface",
+        "lg:w-[var(--sidebar-width)] lg:shrink-0 lg:border-r",
+        collapsed ? "lg:hidden" : "lg:flex",
+        "max-lg:fixed max-lg:bottom-0 max-lg:left-0 max-lg:top-[var(--topbar-height)] max-lg:z-[800] max-lg:w-[min(var(--drawer-width),calc(100vw_-_48px))] max-lg:shadow-ds-overlay",
+        drawerOpen ? "max-lg:flex" : "max-lg:hidden",
+      )}
+    >
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
         <NavItem href="/for-you" icon={<Home />} label="For you" active={is("/for-you")} />
         <NavItem

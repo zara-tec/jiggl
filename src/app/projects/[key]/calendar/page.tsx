@@ -29,14 +29,14 @@ export default function ProjectCalendarPage({ params }: PageProps<"/projects/[ke
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 px-8 pb-3 pt-4">
+      <div className="flex shrink-0 items-center gap-2 px-page pb-3 pt-4">
         <IconButton icon={<ChevronLeft />} label="Previous month" onClick={() => setMonth((m) => addMonths(m, -1))} />
         <IconButton icon={<ChevronRight />} label="Next month" onClick={() => setMonth((m) => addMonths(m, 1))} />
         <Button appearance="subtle" onClick={() => setMonth(startOfMonth(new Date()))}>Today</Button>
         <h2 className="ds-heading-md ml-2">{format(month, "MMMM yyyy")}</h2>
         <span className="ml-auto text-xs text-ds-text-subtlest">Work items are placed on their due date. Drag to reschedule.</span>
       </div>
-      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden px-8 pb-6">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden px-page pb-6">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-ds-md border border-ds-border">
           <div className="grid shrink-0 grid-cols-7 border-b border-ds-border bg-ds-surface-sunken text-center text-xs font-semibold text-ds-text-subtle">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
