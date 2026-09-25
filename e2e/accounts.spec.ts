@@ -67,18 +67,25 @@ test.describe("accounts and teams", () => {
     }
   });
 
-  test("instance settings are the owner's business: others see nothing and are refused", async ({ page }) => {
-    // a throw-away account is never the oldest one, so it does not own the instance
+  test("instance settings belong to the owner: others see nothing and are refused", async ({ page }) => {
     const info = await (await page.request.get("/api/instance")).json();
     expect(["open", "invited", "domains"]).toContain(info.registration);
-    expect(info.owner).toBe(false);
-    expect(info.ownerEmail).toBeUndefined();
-    const denied = await page.request.post("/api/instance", { data: { registration: "invited" } });
-    expect(denied.status()).toBe(403);
     await page.goto("/settings");
     const main = page.locator("main");
     await expect(main).toContainText("Password");
-    await expect(main).not.toContainText("Hand over to");
+    if (info.owner) {
+      // fresh database (CI): the throw-away account is the oldest one, so it owns the instance
+      expect(info.ownerEmail).toContain("@jiggl.test");
+      await expect(main).toContainText("Hand over to");
+      const saved = await page.request.post("/api/instance", { data: { registration: info.registration, domains: info.domains } });
+      expect(saved.ok()).toBe(true);
+    } else {
+      // shared database: somebody else owns the instance
+      expect(info.ownerEmail).toBeUndefined();
+      const denied = await page.request.post("/api/instance", { data: { registration: "invited" } });
+      expect(denied.status()).toBe(403);
+      await expect(main).not.toContainText("Hand over to");
+    }
   });
 
   test("a project team restricts who can be assigned", async ({ page }) => {
