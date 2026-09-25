@@ -1,16 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { KeyRound, MoreHorizontal, UserPlus } from "lucide-react";
+import { KeyRound, MoreHorizontal, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { AVATAR_COLORS, type User, type UserRole } from "@/lib/types";
-import { entryDuration, formatDurationShort, inRange, weekRange, hashColor } from "@/lib/utils";
+import { cn, entryDuration, formatDurationShort, inRange, weekRange, hashColor } from "@/lib/utils";
 import { MIN_PASSWORD_LENGTH, postJson } from "@/lib/passwords";
-import { inTeam, isTeamOpen } from "@/lib/team";
+import type { MailOutcome } from "@/lib/mail";
+import { describeUsage, inTeam, isActive, isTeamOpen, memberUsage, type MemberUsage } from "@/lib/team";
 import { allocatedPercent } from "@/lib/allocations";
 import { useEffectiveEntries } from "@/hooks/useData";
 import { Page } from "@/components/layout/AppShell";
-import { PageHeader, InlineEdit } from "@/components/ui/misc";
+import { PageHeader, InlineEdit, SectionMessage } from "@/components/ui/misc";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
@@ -40,6 +41,14 @@ export default function TeamPage() {
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [rateUserId, setRateUserId] = React.useState<string | null>(null);
   const [passwordUser, setPasswordUser] = React.useState<User | null>(null);
+  const [statusAction, setStatusAction] = React.useState<{ user: User; action: StatusAction } | null>(null);
+  const storedEntries = useStore((s) => s.timeEntries);
+  const timeOffs = useStore((s) => s.timeOffs);
+  const offers = useStore((s) => s.offers);
+  const offerBaselines = useStore((s) => s.offerBaselines);
+  const usageOf = (id: string) => memberUsage(id, { timeEntries: storedEntries, issues, allocations, timeOffs, projects, offers, offerBaselines });
+  // deactivated members stay listed (their history is still there), after the active ones
+  const listed = React.useMemo(() => (users.every(isActive) ? users : [...users.filter(isActive), ...users.filter((u) => !isActive(u))]), [users]);
   const { start, end } = weekRange(new Date());
   const rateUser = users.find((u) => u.id === rateUserId);
   const isAdmin = users.find((u) => u.id === me)?.role === "admin";
@@ -51,7 +60,7 @@ export default function TeamPage() {
       <Page>
         <p className="mt-2 text-sm text-ds-text-subtle">
           Cost rates value every tracked hour. Billing rates live on each project (Settings → Rates), with per-member overrides.
-          {isAdmin ? " As an admin you can give new members a welcome password and reset a forgotten one." : ""}
+          {isAdmin ? " As an admin you can give new members a welcome password, reset a forgotten one, deactivate people who left (their history stays) and remove members added by mistake." : ""}
         </p>
         <table className="mt-4 w-full text-sm">
           <thead>
@@ -68,21 +77,21 @@ export default function TeamPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {listed.map((u) => {
               const mine = entries.filter((e) => e.userId === u.id);
               const week = mine.filter((e) => inRange(e.start, start, end)).reduce((a, e) => a + entryDuration(e), 0);
               const all = mine.reduce((a, e) => a + entryDuration(e), 0);
               const teams = explicitProjects.filter((p) => inTeam(p, u.id));
               return (
-                <tr key={u.id} className="hover:bg-ds-surface-hovered">
+                <tr key={u.id} className={cn("hover:bg-ds-surface-hovered", !isActive(u) && "text-ds-text-subtlest")} data-testid={`member-${u.id}`}>
                   <td className="border-b border-ds-border py-2 pr-4">
                     <span className="flex items-center gap-3">
-                      <Avatar user={u} size="md" />
+                      <Avatar user={u} size="md" className={cn(!isActive(u) && "opacity-50 grayscale")} />
                       <span className="min-w-0">
                         <span className="flex items-center gap-2 font-medium">
                           <InlineEdit value={u.name} onSave={(v) => v && updateUser(u.id, { name: v })} className="-mx-1.5 inline-block px-1.5 py-0.5" />
                           {u.id === me && <Lozenge appearance="inprogress">You</Lozenge>}
-                          {u.linked === false && <Lozenge appearance="moved" maxWidth={120}>No account</Lozenge>}
+                          {u.deactivatedAt ? <Lozenge appearance="removed">Deactivated</Lozenge> : u.linked === false && <Lozenge appearance="moved" maxWidth={120}>No account</Lozenge>}
                         </span>
                         <span className="block text-xs text-ds-text-subtlest">{u.email}</span>
                       </span>
@@ -125,11 +134,27 @@ export default function TeamPage() {
                     <td className="border-b border-ds-border py-1 text-center">
                       {u.id !== me && (
                         <DropdownMenu align="end" trigger={({ ref, toggle }) => <IconButton ref={ref} icon={<MoreHorizontal />} label={`Actions for ${u.name}`} spacing="compact" onClick={toggle} />}>
-                          {({ close }) => (
-                            <MenuItem icon={<KeyRound />} onClick={() => { setPasswordUser(u); close(); }} description={u.linked === false ? "Creates the account so they can sign in" : "Replaces the current password"}>
-                              {u.linked === false ? "Set a password" : "Reset password"}
-                            </MenuItem>
-                          )}
+                          {({ close }) => {
+                            const act = (action: StatusAction) => { setStatusAction({ user: u, action }); close(); };
+                            const usage = usageOf(u.id);
+                            return (
+                              <>
+                                {isActive(u) && (
+                                  <MenuItem icon={<KeyRound />} onClick={() => { setPasswordUser(u); close(); }} description={u.linked === false ? "Creates the account so they can sign in" : "Replaces the current password"}>
+                                    {u.linked === false ? "Set a password" : "Reset password"}
+                                  </MenuItem>
+                                )}
+                                {isActive(u) ? (
+                                  <MenuItem icon={<UserX />} onClick={() => act("deactivate")} description="No access, history kept">Deactivate</MenuItem>
+                                ) : (
+                                  <MenuItem icon={<UserCheck />} onClick={() => act("reactivate")} description="Gives the access back">Reactivate</MenuItem>
+                                )}
+                                <MenuItem icon={<Trash2 />} isDisabled={usage.length > 0} onClick={() => act("remove")} description={usage.length ? `Deactivate instead: ${describeUsage(usage.slice(0, 2))}${usage.length > 2 ? "…" : ""}` : "Nothing refers to them"}>
+                                  Remove from workspace
+                                </MenuItem>
+                              </>
+                            );
+                          }}
                         </DropdownMenu>
                       )}
                     </td>
@@ -157,6 +182,7 @@ export default function TeamPage() {
 
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} isAdmin={isAdmin} />
       {passwordUser && <ResetPasswordModal user={passwordUser} onClose={() => setPasswordUser(null)} />}
+      {statusAction && <MemberStatusModal user={statusAction.user} action={statusAction.action} usage={usageOf(statusAction.user.id)} onClose={() => setStatusAction(null)} />}
     </>
   );
 }
@@ -170,7 +196,10 @@ function InviteModal({ open, onClose, isAdmin }: { open: boolean; onClose: () =>
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [issued, setIssued] = React.useState<{ name: string; email: string; password: string; created: boolean } | null>(null);
+  /** Outcome step: credentials when a welcome password was issued, otherwise how the invitation went (`existing`: the email already had an account, so it was linked as is) */
+  const [issued, setIssued] = React.useState<{ name: string; email: string; password?: string; created: boolean; existing: boolean; mail?: MailOutcome } | null>(null);
+  /** Whether the workspace emails invitations (admins only; null while unknown) */
+  const [mailReady, setMailReady] = React.useState<boolean | null>(null);
   const wasOpen = React.useRef(false);
   React.useEffect(() => {
     if (open && !wasOpen.current) {
@@ -184,6 +213,19 @@ function InviteModal({ open, onClose, isAdmin }: { open: boolean; onClose: () =>
     }
     wasOpen.current = open;
   }, [open]);
+  React.useEffect(() => {
+    if (!open || !isAdmin) return;
+    let cancelled = false;
+    fetch("/api/workspace/mail", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { configured: boolean } | null) => {
+        if (!cancelled && j) setMailReady(j.configured);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAdmin]);
   const valid = name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (!password || password.length >= MIN_PASSWORD_LENGTH);
 
   const invite = async () => {
@@ -196,9 +238,11 @@ function InviteModal({ open, onClose, isAdmin }: { open: boolean; onClose: () =>
     setBusy(true);
     setError(null);
     try {
-      const res = await postJson<{ id: string; linked: boolean; accountCreated: boolean }>("/api/workspace/members", { ...input, password: password || undefined });
+      const res = await postJson<{ id: string; linked: boolean; accountCreated: boolean; mail?: MailOutcome }>("/api/workspace/members", { ...input, password: password || undefined });
       addUser({ ...input, id: res.id, linked: res.linked });
-      if (password) setIssued({ name: input.name, email: input.email, password, created: res.accountCreated });
+      const existing = res.linked && !res.accountCreated;
+      if (password && !existing) setIssued({ name: input.name, email: input.email, password, created: res.accountCreated, existing, mail: res.mail });
+      else if (res.mail || existing) setIssued({ name: input.name, email: input.email, created: false, existing, mail: res.mail });
       else onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -226,8 +270,19 @@ function InviteModal({ open, onClose, isAdmin }: { open: boolean; onClose: () =>
         )
       }
     >
-      {issued ? (
-        <IssuedCredentials name={issued.name} email={issued.email} password={issued.password} created={issued.created} />
+      {issued?.password ? (
+        <IssuedCredentials name={issued.name} email={issued.email} password={issued.password} created={issued.created} mail={issued.mail} />
+      ) : issued ? (
+        <SectionMessage appearance={issued.mail && !issued.mail.sent ? "warning" : "success"} title={issued.mail?.sent ? `Invitation sent to ${issued.email}` : issued.mail ? "Invitation not sent" : `${issued.name} is in the team`}>
+          {issued.existing && <p className="mb-2">{issued.name.split(" ")[0]} already had an account with this email, so it is linked as is: the welcome password was not applied and they sign in with their own.</p>}
+          {issued.mail?.sent ? (
+            <p>{issued.existing ? "The workspace is in their profile menu." : `${issued.name.split(" ")[0]} creates an account with this email and lands in this workspace.`}</p>
+          ) : issued.mail ? (
+            <p>
+              The email to {issued.email} could not be sent: {issued.mail.error}. {issued.existing ? `Tell ${issued.name.split(" ")[0]} the workspace is in their profile menu.` : `Tell ${issued.name.split(" ")[0]} to create an account with this email; they will land in this workspace.`}
+            </p>
+          ) : null}
+        </SectionMessage>
       ) : (
         <>
           <label className="mb-4 block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">Name</span><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="ds-input" /></label>
@@ -237,7 +292,14 @@ function InviteModal({ open, onClose, isAdmin }: { open: boolean; onClose: () =>
             <label className="block"><span className="mb-1 block text-xs font-semibold text-ds-text-subtle">Cost rate (/h)</span><input value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ""))} className="ds-input" placeholder="e.g. 50" /></label>
           </div>
           {isAdmin ? (
-            <PasswordField value={password} onChange={setPassword} label="Welcome password (optional)" hint="With a password the account is created now and the person can sign in right away. Without it, they register themselves with this email and land in this workspace." />
+            <>
+              <PasswordField value={password} onChange={setPassword} label="Welcome password (optional)" hint="With a password the account is created now and the person can sign in right away. Without it, they register themselves with this email and land in this workspace." />
+              {mailReady !== null && (
+                <p className="mt-3 text-xs text-ds-text-subtlest">
+                  {mailReady ? `The invitation is emailed to this address${password ? ", welcome password included" : ""}.` : "No outgoing email is set up (Settings → Outgoing email): let the person know yourself."}
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-xs text-ds-text-subtlest">The person registers with this email and lands in this workspace. Admins can also issue a welcome password.</p>
           )}
@@ -253,14 +315,14 @@ function ResetPasswordModal({ user, onClose }: { user: User; onClose: () => void
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [issued, setIssued] = React.useState<{ password: string; created: boolean } | null>(null);
+  const [issued, setIssued] = React.useState<{ password: string; created: boolean; mail?: MailOutcome } | null>(null);
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
-      const res = await postJson<{ accountCreated: boolean }>("/api/workspace/members/password", { memberId: user.id, password });
+      const res = await postJson<{ accountCreated: boolean; mail?: MailOutcome }>("/api/workspace/members/password", { memberId: user.id, password });
       updateUser(user.id, { linked: true });
-      setIssued({ password, created: res.accountCreated });
+      setIssued({ password, created: res.accountCreated, mail: res.mail });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -287,7 +349,7 @@ function ResetPasswordModal({ user, onClose }: { user: User; onClose: () => void
       }
     >
       {issued ? (
-        <IssuedCredentials name={user.name} email={user.email} password={issued.password} created={issued.created} />
+        <IssuedCredentials name={user.name} email={user.email} password={issued.password} created={issued.created} mail={issued.mail} />
       ) : (
         <>
           <p className="mb-4 text-sm text-ds-text-subtle">
@@ -297,6 +359,73 @@ function ResetPasswordModal({ user, onClose }: { user: User; onClose: () => void
           {error && <p className="mt-3 text-sm text-ds-text-danger">{error}</p>}
         </>
       )}
+    </Modal>
+  );
+}
+
+type StatusAction = "deactivate" | "reactivate" | "remove";
+
+/** Confirms deactivating, reactivating or removing a member, then tells the server (admins only) */
+function MemberStatusModal({ user, action, usage, onClose }: { user: User; action: StatusAction; usage: MemberUsage[]; onClose: () => void }) {
+  const updateUser = useStore((s) => s.updateUser);
+  const removeUser = useStore((s) => s.removeUser);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const first = user.name.split(" ")[0];
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === "remove") {
+        await postJson("/api/workspace/members", { memberId: user.id }, "DELETE");
+        removeUser(user.id);
+      } else {
+        const res = await postJson<{ deactivatedAt: string | null }>("/api/workspace/members", { memberId: user.id, active: action === "reactivate" }, "PATCH");
+        updateUser(user.id, { deactivatedAt: res.deactivatedAt ?? undefined });
+      }
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+  const title = action === "deactivate" ? `Deactivate ${user.name}?` : action === "reactivate" ? `Reactivate ${user.name}?` : `Remove ${user.name}?`;
+  const cta = action === "deactivate" ? "Deactivate" : action === "reactivate" ? "Reactivate" : "Remove";
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={title}
+      width={520}
+      footer={
+        <>
+          <Button appearance="subtle" onClick={onClose}>Cancel</Button>
+          <Button appearance={action === "reactivate" ? "primary" : "danger"} disabled={busy || (action === "remove" && usage.length > 0)} onClick={() => void submit()}>
+            {busy ? "Saving…" : cta}
+          </Button>
+        </>
+      }
+    >
+      {action === "deactivate" && (
+        <ul className="list-disc space-y-1.5 pl-5 text-sm text-ds-text-subtle">
+          <li>{first} can no longer open this workspace{user.linked === false ? " (they have no account yet anyway)" : ""}. Their other workspaces are not affected.</li>
+          <li>Hours, work items, comments and forecast stay as they are: reports and budgets do not change.</li>
+          <li>{first} is no longer offered as assignee, team member or in new plans. Work items already assigned keep the assignee.</li>
+          <li>You can reactivate {first} at any time.</li>
+        </ul>
+      )}
+      {action === "reactivate" && <p className="text-sm text-ds-text-subtle">{first} can open the workspace again{user.linked === false ? " once they have an account" : ""} and can be picked for new work.</p>}
+      {action === "remove" &&
+        (usage.length ? (
+          <SectionMessage appearance="warning" title={`${first} cannot be removed`}>
+            <p>{first} has {describeUsage(usage)}. Deactivate them instead: the history stays and they lose access.</p>
+          </SectionMessage>
+        ) : (
+          <p className="text-sm text-ds-text-subtle">
+            Nothing in the workspace refers to {first}: no hours, work items, comments or plans. {first} leaves the project teams and watch lists{user.linked === false ? "" : "; their account stays, with its other workspaces"}. This cannot be undone, but you can invite {first} again.
+          </p>
+        ))}
+      {error && <p className="mt-3 text-sm text-ds-text-danger">{error}</p>}
     </Modal>
   );
 }

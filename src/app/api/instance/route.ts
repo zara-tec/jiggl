@@ -43,6 +43,7 @@ export const POST = handler(async (req) => {
   if (body.ownerMemberId) {
     const member = await prisma.member.findUnique({ where: { workspaceId_id: { workspaceId: session.workspaceId, id: body.ownerMemberId } } });
     if (!member?.accountId) throw new HttpError(400, "That member has no account yet: give them a password first");
+    if (member.deactivatedAt) throw new HttpError(400, "That member is deactivated");
     patch.ownerAccountId = member.accountId;
   }
   await saveInstance(patch);

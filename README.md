@@ -44,7 +44,8 @@ On first use, create an account and a workspace at **/register**. Ticking "Load 
 - **Authentication**, small and self-contained: passwords hashed with `scrypt`, session in a signed httpOnly cookie (JWT), 30 days. `src/proxy.ts` protects the pages, API routes call `requireSession()`.
 - **Multi-workspace**: an account can belong to several workspaces (profile menu → switch or create). Someone added to the Team with their email finds the workspace when they sign up.
 - **Sync**: the Zustand store stays the client cache. On load `GET /api/bootstrap` fetches the whole workspace; then `src/lib/sync.ts` watches the store, diffs each collection and pushes batches to `POST /api/sync` (write-through, last write wins). The "Saving… / Saved" indicator in the top bar shows the state; if the network is down it retries.
-- API: `POST /api/auth/register|login|logout|switch|password|delete-account`, `GET /api/bootstrap`, `POST /api/sync`, `POST /api/workspaces`, `POST /api/workspace/reset-demo`, `POST /api/workspace/members` and `POST /api/workspace/members/password` (admins: invite with a welcome password, set or reset a member's password), `GET|POST /api/instance` (registration policy; changes by the instance owner).
+- **Outgoing email**, per workspace: admins enter an SMTP server in Settings → Outgoing email (host, port, TLS/STARTTLS/none, login, sender) and send themselves a test message. From then on invitations and issued passwords are emailed; without it, the Team page keeps showing the credentials for the admin to pass on. The SMTP password is stored encrypted with a key derived from `AUTH_SECRET` and never returned to the browser.
+- API: `POST /api/auth/register|login|logout|switch|password|delete-account`, `GET /api/bootstrap`, `POST /api/sync`, `POST /api/workspaces`, `POST /api/workspace/reset-demo`, `POST /api/workspace/members` and `POST /api/workspace/members/password` (admins: invite with a welcome password, set or reset a member's password; both email the person when outgoing email is set up), `GET|POST /api/workspace/mail` and `POST /api/workspace/mail/test` (admins: outgoing email settings and a test message), `GET|POST /api/instance` (registration policy; changes by the instance owner).
 
 Schema changes:
 
@@ -86,7 +87,7 @@ Client
 - **Clients** with a client page (Overview, Projects, Offers, Time), **Tags**.
 - **Project teams**: a project is open to everyone or has a chosen team (Settings → Team); assignees, forecast columns, allocations and filters then only offer the team, and converting an offer adds the people planned in its forecast. The Team page lists each member's projects.
 - **Instance settings** (Settings → Instance, instance owner only): registration open to anyone, by invitation only, or limited to listed email domains; invited people always get in. The owner is the oldest account (or the one named by `INSTANCE_OWNER_EMAIL`) and can hand over to a member.
-- **Accounts**: registering creates a personal workspace and links the invitations already sent to that email. Admins can invite a member with a welcome password (the account is created at once) and reset a forgotten password from the Team page; everyone changes their own password in Settings.
+- **Accounts**: registering creates a personal workspace and links the invitations already sent to that email. Admins can invite a member with a welcome password (the account is created at once) and reset a forgotten password from the Team page; everyone changes their own password in Settings. With outgoing email set up (Settings → Outgoing email), the invitation and the password reach the person by email.
 - **Days off for everybody**: public holidays and company closures (single days or ranges) in Settings; allocations and dependent offer lines skip them.
 
 ### Project management
@@ -122,7 +123,7 @@ src/components/offers   offer lines, forecast matrix, baselines, conversion, Bud
 src/components/rates    change-rate dialog
 src/components/allocations  allocations, time off, holidays
 src/components/reports  charts and filter bar
-src/lib                 types, store, sync, seed, rates, offers, forecast, schedule, team, holidays, passwords, allocations, budget
+src/lib                 types, store, sync, seed, rates, offers, forecast, schedule, team, holidays, passwords, mail, allocations, budget
 scripts/                screenshots and end-to-end checks with Playwright (system Chrome)
 ```
 
@@ -142,7 +143,7 @@ node scripts/verify-filters.mjs
 
 ## Suggested next steps
 
-- Email invitations and roles enforced on the server (today roles are informative, except the workspace reset reserved to admins).
+- Roles enforced on the server (today roles are informative, except the workspace reset, invitations and passwords reserved to admins).
 - Invoicing: a third amount next to sold and consumed, with rates frozen on invoiced hours.
 - Timesheet approvals, attachments and links between work items.
 

@@ -21,3 +21,12 @@ export async function readJson<T>(req: Request): Promise<T> {
     throw new HttpError(400, "Invalid JSON body");
   }
 }
+
+/** Public origin of the app for links in emails, honouring a reverse proxy */
+export function requestOrigin(req: Request): string {
+  const url = new URL(req.url);
+  const first = (h: string | null) => h?.split(",")[0].trim() || "";
+  const proto = first(req.headers.get("x-forwarded-proto")) || url.protocol.replace(":", "");
+  const host = first(req.headers.get("x-forwarded-host")) || req.headers.get("host") || url.host;
+  return `${proto}://${host}`;
+}

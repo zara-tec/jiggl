@@ -10,6 +10,7 @@ import { activityHours, currentForecast, forecastMembers, formatEffort, fromUnit
 import { isOrder } from "@/lib/offers";
 import { formatMoney } from "@/lib/rates";
 import { cn } from "@/lib/utils";
+import { pickable } from "@/lib/team";
 import { Avatar } from "@/components/ui/Avatar";
 import { Select } from "@/components/ui/Select";
 import { ColumnsChip } from "@/components/ui/ColumnsChip";
@@ -51,7 +52,7 @@ export function ForecastMatrix({ offer, project }: { offer: Offer; project: Proj
     const ids = new Set([...forecastMembers(offer.lines), ...extra]);
     return users.filter((u) => ids.has(u.id)).sort((a, b) => a.name.localeCompare(b.name));
   }, [offer.lines, extra, users]);
-  const available = React.useMemo(() => team.filter((u) => !members.some((m) => m.id === u.id)).sort((a, b) => a.name.localeCompare(b.name)), [team, members]);
+  const available = React.useMemo(() => pickable(team).filter((u) => !members.some((m) => m.id === u.id)).sort((a, b) => a.name.localeCompare(b.name)), [team, members]);
   const lines = React.useMemo(() => [...offer.lines].sort((a, b) => a.order - b.order), [offer.lines]);
   const byLine = new Map(forecast.lines.map((l) => [l.lineId, l]));
   const fmt: Fmt = (h, opts) => formatEffort(h, unit, settings, opts);

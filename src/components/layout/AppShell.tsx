@@ -10,6 +10,7 @@ import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
 import { Button } from "@/components/ui/Button";
 
 const AUTH_PAGES = ["/login", "/register"];
+const DENIED = "Your access to this workspace has been removed or deactivated. Ask a workspace admin, or sign in with another account.";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then((status) => {
         if (cancelled) return;
         if (status === 401) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        else if (status === 403) setError(DENIED);
         else if (status !== 200) setError(`The server answered ${status}.`);
       })
       .catch(() => !cancelled && setError("Cannot reach the server."));
@@ -54,9 +56,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
               <div className="ds-heading-md">Could not load your workspace</div>
               <p className="text-sm text-ds-text-subtle">{error}</p>
-              <Button appearance="primary" onClick={() => setAttempt((a) => a + 1)}>
-                Try again
-              </Button>
+              {error === DENIED ? (
+                <Button appearance="primary" onClick={() => void fetch("/api/auth/logout", { method: "POST" }).then(() => router.replace("/login"))}>
+                  Sign out
+                </Button>
+              ) : (
+                <Button appearance="primary" onClick={() => setAttempt((a) => a + 1)}>
+                  Try again
+                </Button>
+              )}
             </div>
           ) : (
             <ShellSkeleton />

@@ -28,6 +28,8 @@ const MODEL: Record<Collection, string> = {
 };
 
 const BOOKKEEPING = new Set(["workspaceId", "syncedAt", "accountId"]);
+/** Read by the client but written only by dedicated admin routes, never by the sync */
+const SERVER_MANAGED: Partial<Record<Collection, Set<string>>> = { users: new Set(["deactivatedAt"]) };
 
 type Entity = Record<string, unknown>;
 type Tx = Prisma.TransactionClient;
@@ -59,10 +61,12 @@ function delegate(tx: Tx | typeof prisma, collection: Collection) {
   };
 }
 
-/** Entity (client shape) -> row (Prisma shape). Unknown keys are dropped, undefined becomes null. */
+/** Entity (client shape) -> row (Prisma shape). Unknown and server-managed keys are dropped, undefined becomes null. */
 export function toRow(collection: Collection, entity: Entity): Entity {
   const row: Entity = {};
+  const managed = SERVER_MANAGED[collection];
   for (const f of fields(collection)) {
+    if (managed?.has(f.name)) continue;
     const v = entity[f.name];
     if (v === undefined || v === null) {
       if (f.isRequired) row[f.name] = f.type === "Json" ? [] : f.type === "String" ? "" : f.type === "Boolean" ? false : 0;

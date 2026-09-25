@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 import { useProjectTeam } from "@/hooks/useData";
 import { ISSUE_TYPES, PRIORITIES, STATUSES, type ID, type IssuePriority, type IssueStatus, type IssueType } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { pickable } from "@/lib/team";
 import { Avatar, ProjectAvatar } from "@/components/ui/Avatar";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { Lozenge, boldStatusClasses } from "@/components/ui/Lozenge";
@@ -114,10 +115,11 @@ export function UserSelect({
   const users = useStore((s) => s.users);
   const team = useProjectTeam(projectId);
   const me = useStore((s) => s.currentUserId);
-  const pool = projectId ? team : users;
+  // deactivated members are not offered; the current value stays listed so the field still shows it
+  const pool = pickable(projectId ? team : users);
   const selected = users.find((u) => u.id === value);
   const listed = selected && !pool.includes(selected) ? [...pool, selected] : pool;
-  const options: SelectOption[] = listed.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="sm" />, description: pool.includes(u) ? u.email : "Not in the project team" }));
+  const options: SelectOption[] = listed.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="sm" />, description: pool.includes(u) ? u.email : u.deactivatedAt ? "Deactivated" : "Not in the project team" }));
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
       <Select

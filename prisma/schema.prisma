@@ -42,34 +42,38 @@ model Workspace {
   settings  Json
   createdAt DateTime @default(now())
 
-  members     Member[]
-  clients     Client[]
-  tags        Tag[]
-  projects    Project[]
-  sprints     Sprint[]
-  issues      Issue[]
-  timeEntries TimeEntry[]
-  offers      Offer[]
+  members        Member[]
+  clients        Client[]
+  tags           Tag[]
+  projects       Project[]
+  sprints        Sprint[]
+  issues         Issue[]
+  timeEntries    TimeEntry[]
+  offers         Offer[]
   offerBaselines OfferBaseline[]
-  allocations Allocation[]
-  holidays    Holiday[]
-  timeOffs    TimeOff[]
+  allocations    Allocation[]
+  holidays       Holiday[]
+  timeOffs       TimeOff[]
+  mail           WorkspaceMail?
 }
 
 /// A person in a workspace (the client's "users" collection). Linked to an
 /// Account when that person can log in.
 model Member {
-  workspaceId String
-  id          String
-  accountId   String?
-  name        String
-  email       String
-  color       String
-  role        String
-  costRates   Json
-  syncedAt    DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  account     Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  workspaceId   String
+  id            String
+  accountId     String?
+  name          String
+  email         String
+  color         String
+  role          String
+  costRates     Json
+  /// Set by workspace admins (never by the sync): the person keeps their history
+  /// but can no longer open this workspace nor be picked for new work.
+  deactivatedAt String?
+  syncedAt      DateTime  @updatedAt
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account       Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@id([workspaceId, id])
   @@index([accountId])
@@ -286,4 +290,20 @@ model TimeOff {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@id([workspaceId, id])
+}
+
+/// Outgoing mail of a workspace (SMTP), set by its admins from Settings and
+/// used for invitations and issued passwords. The password is encrypted with
+/// AUTH_SECRET (src/server/crypto.ts) and never reaches the client.
+model WorkspaceMail {
+  workspaceId String    @id
+  host        String
+  port        Int
+  security    String
+  user        String
+  password    String
+  fromName    String
+  fromEmail   String
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }

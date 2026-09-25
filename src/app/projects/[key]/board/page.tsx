@@ -7,16 +7,16 @@ import { differenceInCalendarDays, parseISO } from "date-fns";
 import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type DragEndEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, Search, SlidersHorizontal, Plus, X } from "lucide-react";
+import { ChevronDown, Maximize2, Minimize2, Search, SlidersHorizontal, Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useLoggedByIssue, useProjectByKey, useProjectIssues, useProjectSprints } from "@/hooks/useData";
 import { STATUSES, type Issue, type IssueStatus, type IssueType, ISSUE_TYPES } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { DropdownMenu, MenuItem } from "@/components/ui/Popover";
 import { Select } from "@/components/ui/Select";
-import { EmptyState } from "@/components/ui/misc";
+import { EmptyState, Tooltip } from "@/components/ui/misc";
 import { IssueCard } from "@/components/issues/IssueCard";
 import { IssueTypeIcon, EpicLozenge } from "@/components/issues/icons";
 import { IssueModal } from "@/components/issues/IssueView";
@@ -40,6 +40,17 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
   const [groupBy, setGroupBy] = React.useState<"none" | "assignee" | "epic">("none");
   const [openIssueId, setOpenIssueId] = React.useState<string | null>(null);
   const [completeOpen, setCompleteOpen] = React.useState(false);
+  // full screen: the board covers the top bar, the sidebar and the project header (Esc leaves it, unless a dialog is open)
+  const [full, setFull] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!full) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.querySelector("[aria-modal]")) setFull(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [full]);
 
   const activeSprint = sprints.find((s) => s.state === "active");
   const isScrum = project?.type === "software";
@@ -79,7 +90,8 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
   const quickCreate = (status: IssueStatus, summary: string) => createIssue({ projectId: project.id, type: "task", summary, status, sprintId: activeSprint?.id });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex min-h-0 flex-1 flex-col", full && "fixed inset-0 z-[800] bg-ds-surface")}>
+      {full && <h1 className="ds-heading-lg shrink-0 px-8 pt-5">{project.name} board</h1>}
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-8 pb-3 pt-4">
         <div className="relative w-44">
@@ -165,6 +177,9 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
             <Button onClick={() => setCompleteOpen(true)}>Complete sprint</Button>
           )}
           <Button appearance="subtle" iconBefore={<SlidersHorizontal />} aria-label="View settings" />
+          <Tooltip content={full ? "Exit full screen (Esc)" : "Enter full screen"}>
+            <IconButton icon={full ? <Minimize2 /> : <Maximize2 />} label={full ? "Exit full screen" : "Enter full screen"} onClick={() => setFull((f) => !f)} />
+          </Tooltip>
         </div>
       </div>
 
@@ -230,6 +245,8 @@ function BoardLanes({
 }) {
   const [columns, setColumns] = React.useState<Record<IssueStatus, string[]>>(() => build(issues));
   const [activeId, setActiveId] = React.useState<string | null>(null);
+  // columns stretch with the window, so the dragged card takes the width it had in its column
+  const [dragWidth, setDragWidth] = React.useState<number>();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   React.useEffect(() => {
@@ -242,7 +259,10 @@ function BoardLanes({
     return (Object.keys(columns) as IssueStatus[]).find((k) => columns[k].includes(id));
   };
 
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const onDragStart = (e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+    setDragWidth(e.active.rect.current.initial?.width);
+  };
   const onDragOver = (e: DragOverEvent) => {
     const { active, over } = e;
     if (!over) return;
@@ -285,12 +305,13 @@ function BoardLanes({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
-      <div className="flex min-w-max gap-3">
+      {/* columns share the width; below their minimum the board scrolls sideways */}
+      <div className="flex gap-3">
         {STATUSES.map((s) => (
           <Column key={s.id} status={s.id} name={s.name} ids={columns[s.id]} byId={byId} onOpen={onOpen} logged={logged} onQuickCreate={onQuickCreate} isDone={s.id === "done"} />
         ))}
       </div>
-      <DragOverlay>{activeIssue ? <IssueCard issue={activeIssue} dragging className="w-[270px]" /> : null}</DragOverlay>
+      <DragOverlay>{activeIssue ? <IssueCard issue={activeIssue} dragging style={{ width: dragWidth ?? 270 }} /> : null}</DragOverlay>
     </DndContext>
   );
 }
@@ -306,7 +327,7 @@ function Column({ status, name, ids, byId, onOpen, logged, onQuickCreate, isDone
   const [creating, setCreating] = React.useState(false);
   const [text, setText] = React.useState("");
   return (
-    <div ref={setNodeRef} className={cn("flex w-[286px] shrink-0 flex-col rounded-ds-md bg-ds-surface-sunken transition-colors", isOver && "bg-ds-selected")}>
+    <div ref={setNodeRef} className={cn("flex min-w-[230px] flex-1 basis-0 flex-col rounded-ds-md bg-ds-surface-sunken transition-colors", isOver && "bg-ds-selected")}>
       <div className="flex h-10 items-center gap-2 px-3">
         <span className="ds-heading-xxs text-ds-text-subtlest">{name}</span>
         <span className="text-xs text-ds-text-subtlest">{ids.length}</span>

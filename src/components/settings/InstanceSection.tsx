@@ -46,7 +46,7 @@ export function InstanceSection() {
   if (!info?.owner) return null;
   const parsed = parseDomains(domains);
   const dirty = registration !== info.registration || parsed.join(",") !== info.domains.join(",");
-  const linked = users.filter((u) => u.linked !== false && u.id !== me);
+  const linked = users.filter((u) => u.linked !== false && !u.deactivatedAt && u.id !== me);
 
   const save = async () => {
     setBusy(true);

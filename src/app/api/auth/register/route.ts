@@ -24,7 +24,7 @@ export const POST = handler(async (req) => {
   if (password.length < 8) throw new HttpError(400, "Password must be at least 8 characters");
   if (await prisma.account.findUnique({ where: { email } })) throw new HttpError(409, "An account with this email already exists");
   // the installation may limit registration; an invitation (a member row waiting for this email) always opens the door
-  const invited = !!(await prisma.member.findFirst({ where: { email, accountId: null }, select: { id: true } }));
+  const invited = !!(await prisma.member.findFirst({ where: { email, accountId: null, deactivatedAt: null }, select: { id: true } }));
   const verdict = registrationAllowed(await getInstance(), email, invited);
   if (!verdict.ok) throw new HttpError(403, verdict.reason);
 

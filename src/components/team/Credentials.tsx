@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { generatePassword } from "@/lib/passwords";
+import type { MailOutcome } from "@/lib/mail";
 import { Button } from "@/components/ui/Button";
 import { SectionMessage } from "@/components/ui/misc";
 
@@ -22,11 +23,23 @@ export function PasswordField({ value, onChange, label = "Password", hint, autoF
   );
 }
 
-/** Credentials shown once after they are issued, with copy buttons */
-export function IssuedCredentials({ name, email, password, created }: { name: string; email: string; password: string; created: boolean }) {
+/**
+ * Credentials shown once after they are issued, with copy buttons. `mail`
+ * says whether they were also emailed (undefined: the workspace has no
+ * outgoing email).
+ */
+export function IssuedCredentials({ name, email, password, created, mail }: { name: string; email: string; password: string; created: boolean; mail?: MailOutcome }) {
+  const first = name.split(" ")[0];
   return (
     <SectionMessage appearance="success" title={created ? `${name} can sign in now` : `Password of ${name} replaced`}>
-      <p className="mb-2">Share these credentials privately. They are shown only now; {name.split(" ")[0]} can change the password from Settings.</p>
+      {mail?.sent ? (
+        <p className="mb-2">Emailed to {email}. Shown here only now; {first} can change the password from Settings.</p>
+      ) : (
+        <>
+          {mail && <p className="mb-2 text-ds-text-danger">The email to {email} could not be sent: {mail.error}.</p>}
+          <p className="mb-2">Share these credentials privately. They are shown only now; {first} can change the password from Settings.</p>
+        </>
+      )}
       <dl className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 text-sm">
         <dt className="text-xs font-semibold text-ds-text-subtle">Email</dt>
         <dd className="font-mono">{email}</dd>
