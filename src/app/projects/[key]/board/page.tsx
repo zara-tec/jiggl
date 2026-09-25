@@ -91,9 +91,9 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", full && "fixed inset-0 z-[800] bg-ds-surface")}>
-      {full && <h1 className="ds-heading-lg shrink-0 px-8 pt-5">{project.name} board</h1>}
+      {full && <h1 className="ds-heading-lg shrink-0 px-page pt-5">{project.name} board</h1>}
       {/* Toolbar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-8 pb-3 pt-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-page pb-3 pt-4">
         <div className="relative w-44">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-2.5 text-ds-icon-subtle" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search board" className="ds-input h-8 py-1 pl-8" />
@@ -184,11 +184,11 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
       </div>
 
       {isScrum && activeSprint && (
-        <div className="flex shrink-0 items-center gap-3 px-8 pb-2 text-sm">
-          <span className="font-semibold">{activeSprint.name}</span>
+        <div className="flex shrink-0 items-center gap-3 px-page pb-2 text-sm">
+          <span className="shrink-0 font-semibold">{activeSprint.name}</span>
           {activeSprint.goal && <span className="truncate text-ds-text-subtle">— {activeSprint.goal}</span>}
           {daysLeft !== undefined && (
-            <span className={cn("ml-auto text-xs", daysLeft < 0 ? "text-ds-text-danger" : "text-ds-text-subtlest")}>
+            <span className={cn("ml-auto shrink-0 text-xs", daysLeft < 0 ? "text-ds-text-danger" : "text-ds-text-subtlest")}>
               {daysLeft < 0 ? `${-daysLeft} days overdue` : `${daysLeft} days remaining`}
             </span>
           )}
@@ -206,7 +206,7 @@ export default function BoardPage({ params }: PageProps<"/projects/[key]/board">
           }
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto px-8 pb-6">
+        <div className="min-h-0 flex-1 overflow-auto px-page pb-6">
           {groups.map((g) => (
             <div key={g.id} className="mb-6">
               {g.label && <div className="mb-2 flex items-center gap-2 text-sm font-semibold">{g.label}<span className="text-xs font-normal text-ds-text-subtlest">{g.issues.length}</span></div>}

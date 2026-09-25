@@ -119,7 +119,7 @@ export default function BacklogPage({ params }: PageProps<"/projects/[key]/backl
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-8 pb-3 pt-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-page pb-3 pt-4">
         <div className="relative w-44">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-2.5 text-ds-icon-subtle" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search backlog" className="ds-input h-8 py-1 pl-8" />
@@ -148,9 +148,10 @@ export default function BacklogPage({ params }: PageProps<"/projects/[key]/backl
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden px-8 pb-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-page pb-6 md:flex-row">
         {showEpics && (
-          <aside className="w-64 shrink-0 overflow-y-auto rounded-ds-md bg-ds-surface-sunken p-2">
+          // on phones the epics panel sits above the backlog
+          <aside className="max-h-[40%] shrink-0 overflow-y-auto rounded-ds-md bg-ds-surface-sunken p-2 md:max-h-none md:w-64">
             <div className="ds-heading-xxs px-2 py-2 text-ds-text-subtlest">Epics</div>
             <button type="button" onClick={() => setEpicId(null)} className={cn("mb-1 flex h-8 w-full items-center rounded-ds px-2 text-sm hover:bg-ds-neutral-hovered", !epicId && "bg-ds-selected text-ds-text-selected")}>
               All work items
@@ -246,11 +247,12 @@ function SprintSection({
 
   return (
     <section ref={setNodeRef} className={cn("mb-4 rounded-ds-md bg-ds-surface-sunken p-2 transition-colors", isOver && "bg-ds-selected")}>
-      <header className="flex items-center gap-2 px-1 py-1">
+      <header className="flex flex-wrap items-center gap-2 px-1 py-1">
         <button type="button" onClick={() => setOpen((o) => !o)} className="inline-flex size-6 items-center justify-center rounded-ds text-ds-icon hover:bg-ds-neutral-hovered">
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2">
+        {/* below 640px the points and the sprint actions wrap under the name */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 max-sm:basis-[calc(100%_-_32px)]">
           <button type="button" onClick={onEdit} className="rounded-ds px-1 text-sm font-semibold hover:bg-ds-neutral-hovered">
             {sprint ? sprint.name : "Backlog"}
           </button>
@@ -262,7 +264,7 @@ function SprintSection({
           <span className="text-xs text-ds-text-subtlest">({issues.length} work item{issues.length === 1 ? "" : "s"})</span>
           {sprint?.goal && <span className="w-full truncate pl-1 text-xs text-ds-text-subtle">{sprint.goal}</span>}
         </div>
-        <div className="flex items-center gap-1" title="Story points: to do / in progress / done">
+        <div className="flex items-center gap-1 max-sm:ml-8 max-sm:mr-auto" title="Story points: to do / in progress / done">
           <Lozenge>{pts("todo")}</Lozenge>
           <Lozenge appearance="inprogress">{pts("inprogress")}</Lozenge>
           <Lozenge appearance="success">{pts("done")}</Lozenge>
@@ -347,14 +349,15 @@ function BacklogRowContent({ issue, onOpen }: { issue: Issue; onOpen?: (i: Issue
   const update = useStore((s) => s.updateIssue);
   const parent = useStore((s) => (issue.parentId ? s.issues.find((i) => i.id === issue.parentId) : undefined));
   return (
-    <div className="flex h-10 items-center gap-2 px-2">
+    // below 640px the summary takes a line of its own, the key and the fields go below it
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2 sm:h-10 sm:flex-nowrap sm:py-0">
       <IssueTypeIcon type={issue.type} />
       <span className={cn("w-16 shrink-0 text-xs text-ds-text-subtle", issue.status === "done" && "line-through")}>{issue.key}</span>
-      <button type="button" onClick={() => onOpen?.(issue)} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">
+      <button type="button" onClick={() => onOpen?.(issue)} className="min-w-0 flex-1 truncate text-left text-sm hover:underline max-sm:order-first max-sm:basis-full">
         {issue.summary}
       </button>
-      {parent && parent.type === "epic" && <EpicLozenge id={parent.id} name={parent.summary} className="hidden lg:inline-flex" />}
-      <PriorityIcon priority={issue.priority} />
+      {parent && parent.type === "epic" && <EpicLozenge id={parent.id} name={parent.summary} className="max-lg:hidden" />}
+      <PriorityIcon priority={issue.priority} className="max-sm:ml-auto" />
       <div onPointerDown={(e) => e.stopPropagation()} className="flex items-center gap-1">
         <StatusSelect value={issue.status} onChange={(v) => update(issue.id, { status: v })} compact />
         <span className="inline-flex w-8 justify-center">

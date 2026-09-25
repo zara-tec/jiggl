@@ -25,7 +25,7 @@ import { formatMoney } from "@/lib/rates";
 export function IssueModal({ issueId, onClose }: { issueId: string | null; onClose: () => void }) {
   const issue = useIssue(issueId ?? undefined);
   return (
-    <Modal open={!!issueId && !!issue} onClose={onClose} width={1100} bodyClassName="px-0 py-0" className="max-h-[90vh]">
+    <Modal open={!!issueId && !!issue} onClose={onClose} width={1100} bodyClassName="px-0 py-0 sm:px-0" className="max-h-[90vh]">
       {issue && <IssueView issueId={issue.id} variant="modal" onClose={onClose} />}
     </Modal>
   );
@@ -83,10 +83,10 @@ export function IssueView({ issueId, variant, onClose }: { issueId: string; vari
   };
 
   return (
-    <div className={cn("flex min-h-0 flex-col", variant === "modal" ? "max-h-[90vh]" : "flex-1")}>
+    <div className={cn("flex min-h-0 flex-col", variant === "modal" ? "max-h-[90vh] max-sm:max-h-none max-sm:flex-1" : "flex-1")}>
       {/* Header */}
-      <div className={cn("flex shrink-0 items-center justify-between gap-4 px-8 pt-5", variant === "modal" && "px-6 pt-4")}>
-        <nav className="flex min-w-0 items-center gap-1 text-sm text-ds-text-subtle">
+      <div className={cn("flex shrink-0 items-start justify-between gap-4", variant === "modal" ? "px-4 pt-4 sm:px-6" : "px-page pt-5")}>
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 pt-1.5 text-sm text-ds-text-subtle">
           <Link href={`/projects/${project.key}/board`} className="flex items-center gap-1.5 rounded-ds px-1 hover:bg-ds-neutral-subtle-hovered hover:text-ds-link">
             <ProjectAvatar name={project.name} color={project.color} size={16} /> {project.name}
           </Link>
@@ -132,11 +132,16 @@ export function IssueView({ issueId, variant, onClose }: { issueId: string; vari
       </div>
 
       {/* Body */}
-      <div className={cn("flex min-h-0 flex-1 gap-8 overflow-y-auto px-8 pb-10 pt-3", variant === "modal" && "px-6")}>
-        <div className="min-w-0 flex-1">
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto pb-10 pt-3 lg:flex-row", variant === "modal" ? "px-4 sm:px-6" : "px-page")}>
+        {/* one column below 1024px: the details panel follows the activity */}
+        <div className="min-w-0 shrink-0 lg:flex-1">
           <InlineEdit as="h1" value={issue.summary} onSave={(v) => v && update(issue.id, { summary: v })} className="ds-heading-xl -mx-1.5 px-1.5 py-1" inputClassName="ds-heading-xl py-1" />
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* in one column the status stays under the title, as in the right column on wide screens */}
+            <span className="lg:hidden">
+              <StatusButton value={issue.status} onChange={(v) => update(issue.id, { status: v })} />
+            </span>
             <DropdownMenu
               trigger={({ ref, toggle }) => (
                 <Button ref={ref} onClick={toggle} iconBefore={<Plus />} iconAfter={<ChevronDown />}>
@@ -325,8 +330,8 @@ export function IssueView({ issueId, variant, onClose }: { issueId: string; vari
         </div>
 
         {/* Right column */}
-        <aside className="w-80 shrink-0">
-          <div className="mb-3 flex items-center gap-2">
+        <aside className="w-full shrink-0 lg:w-80">
+          <div className="mb-3 hidden items-center gap-2 lg:flex">
             <StatusButton value={issue.status} onChange={(v) => update(issue.id, { status: v })} />
           </div>
           <div className="rounded-ds border border-ds-border">

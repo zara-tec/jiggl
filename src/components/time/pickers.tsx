@@ -58,7 +58,7 @@ export function ProjectIssuePicker({
         onClick={() => setOpen((o) => !o)}
         title={project ? `${project.name}${issue ? ` · ${issue.key}` : ""}` : "Select project"}
         className={cn(
-          "inline-flex h-8 max-w-[260px] items-center gap-1.5 rounded-ds px-2 text-sm font-medium hover:bg-ds-neutral-subtle-hovered",
+          "inline-flex h-8 max-w-[260px] items-center gap-1.5 overflow-hidden rounded-ds px-2 text-sm font-medium hover:bg-ds-neutral-subtle-hovered",
           open && "bg-ds-neutral-subtle-hovered",
           !project && "text-ds-text-subtle",
           compact && "h-6 px-1 text-xs",
@@ -71,9 +71,9 @@ export function ProjectIssuePicker({
             <span className="truncate" style={{ color: project.color }}>
               {project.name}
             </span>
-            {client && !compact && <span className="truncate text-ds-text-subtlest">· {client.name}</span>}
+            {client && !compact && <span className="truncate text-ds-text-subtlest max-md:hidden">· {client.name}</span>}
             {issue && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-[3px] bg-ds-neutral px-1 text-[11px] font-semibold text-ds-text-subtle">
+              <span className="inline-flex shrink-0 items-center gap-1 overflow-hidden rounded-[3px] bg-ds-neutral px-1 text-[11px] font-semibold text-ds-text-subtle max-md:min-w-0 max-md:shrink">
                 <IssueTypeIcon type={issue.type} size={12} /> {issue.key}
               </span>
             )}

@@ -92,18 +92,19 @@ export default function CalendarPage() {
           </div>
         }
       />
-      <div className="px-8 pt-4">
+      <div className="px-page pt-4">
         <TimerBar />
       </div>
-      <div className="flex items-center gap-2 px-8 pb-2 pt-4">
+      <div className="flex flex-wrap items-center gap-2 px-page pb-2 pt-4">
         <IconButton icon={<ChevronLeft />} label="Previous week" onClick={() => setWeekStart((w) => addWeeks(w, -1))} />
         <IconButton icon={<ChevronRight />} label="Next week" onClick={() => setWeekStart((w) => addWeeks(w, 1))} />
         <Button appearance="subtle" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
         <span className="ds-heading-sm ml-2">{format(weekStart, "d MMM")} – {format(addDays(weekStart, 6), "d MMM yyyy")}</span>
         <span className="ml-auto text-sm text-ds-text-subtle">Week total <span className="tabular-nums font-semibold text-ds-text">{formatDurationClock(weekTotal)}</span></span>
       </div>
-      <div className="mx-8 mb-6 flex min-h-0 flex-1 flex-col overflow-hidden rounded-ds-md border border-ds-border">
-        <div className="grid shrink-0 grid-cols-[56px_repeat(7,1fr)] border-b border-ds-border bg-ds-surface">
+      {/* seven days need about 640px: narrower screens scroll the week sideways, header and hours together */}
+      <div className="mx-[var(--page-gutter)] mb-6 flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden rounded-ds-md border border-ds-border">
+        <div className="grid min-w-[640px] shrink-0 grid-cols-[56px_repeat(7,1fr)] border-b border-ds-border bg-ds-surface">
           <div />
           {days.map((d) => {
             const dayList = mine.filter((e) => isSameDay(parseISO(e.start), d));
@@ -118,7 +119,7 @@ export default function CalendarPage() {
             );
           })}
         </div>
-        <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto select-none" onMouseUp={finishDrag} onMouseLeave={finishDrag}>
+        <div ref={scrollRef} className="relative min-h-0 min-w-[640px] flex-1 overflow-y-auto select-none" onMouseUp={finishDrag} onMouseLeave={finishDrag}>
           <div className="grid grid-cols-[56px_repeat(7,1fr)]" style={{ height: HOUR_H * 24 }}>
             <div className="relative">
               {Array.from({ length: 24 }).map((_, h) => (

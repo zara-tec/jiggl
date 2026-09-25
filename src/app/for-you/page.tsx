@@ -11,7 +11,7 @@ import { Page } from "@/components/layout/AppShell";
 import { PageHeader, Tabs, EmptyState } from "@/components/ui/misc";
 import { ProjectAvatar, Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { IssueTypeIcon, StatusLozenge } from "@/components/issues/icons";
+import { ISSUE_TYPE_META, IssueTypeIcon, StatusLozenge } from "@/components/issues/icons";
 import type { Issue } from "@/lib/types";
 import { useEffectiveEntries } from "@/hooks/useData";
 
@@ -74,14 +74,15 @@ export default function ForYouPage() {
                   View all projects
                 </Link>
               </div>
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2 sm:gap-4">
                 {recentProjects.map((p) => {
                   const open = issues.filter((i) => i.projectId === p.id && i.status !== "done").length;
                   const done = issues.filter((i) => i.projectId === p.id && i.status === "done").length;
                   return (
-                    <div key={p.id} className="relative overflow-hidden rounded-ds-lg border border-ds-border bg-ds-surface p-4 shadow-ds-raised">
-                      <span className="absolute left-0 top-0 h-full w-5" style={{ background: p.color, opacity: 0.85 }} />
-                      <div className="ml-4 flex items-start gap-3">
+                    // on phones only avatar, name and type, as compact as the list of spaces there
+                    <div key={p.id} className="relative overflow-hidden rounded-ds-lg border border-ds-border bg-ds-surface p-3 shadow-ds-raised sm:p-4">
+                      <span className="absolute left-0 top-0 h-full w-2 sm:w-5" style={{ background: p.color, opacity: 0.85 }} />
+                      <div className="ml-1 flex items-start gap-3 sm:ml-4">
                         <ProjectAvatar name={p.name} color={p.color} size={32} />
                         <div className="min-w-0 flex-1">
                           <Link href={`/projects/${p.key}/board`} className="block truncate font-semibold hover:underline">
@@ -90,7 +91,7 @@ export default function ForYouPage() {
                           <div className="truncate text-xs text-ds-text-subtlest">{p.type === "software" ? "Software project" : "Business project"}</div>
                         </div>
                       </div>
-                      <div className="ml-4 mt-4 space-y-1 text-xs text-ds-text-subtle">
+                      <div className="ml-4 mt-4 space-y-1 text-xs text-ds-text-subtle max-sm:hidden">
                         <Link href={`/projects/${p.key}/list?status=open`} className="flex items-center justify-between rounded-ds px-1 py-0.5 hover:bg-ds-neutral-subtle-hovered">
                           <span>Open work items</span>
                           <span className="rounded-lg bg-ds-neutral px-1.5 font-semibold">{open}</span>
@@ -100,7 +101,7 @@ export default function ForYouPage() {
                           <span className="rounded-lg bg-ds-neutral px-1.5 font-semibold">{done}</span>
                         </Link>
                       </div>
-                      <div className="ml-4 mt-3 flex gap-3 text-xs">
+                      <div className="ml-4 mt-3 flex gap-3 text-xs max-sm:hidden">
                         <Link href={`/projects/${p.key}/board`} className="text-ds-link hover:underline">
                           Board
                         </Link>
@@ -237,7 +238,7 @@ function GroupedIssueList({ issues, projects, tab }: { issues: Issue[]; projects
           <ul>
             {g.items.map((i) => (
               <li key={i.id}>
-                <Link href={`/browse/${i.key}`} className="flex h-10 items-center gap-3 rounded-ds px-2 hover:bg-ds-neutral-subtle-hovered">
+                <Link href={`/browse/${i.key}`} className="hidden h-10 items-center gap-3 rounded-ds px-2 hover:bg-ds-neutral-subtle-hovered sm:flex">
                   <IssueTypeIcon type={i.type} />
                   <span className="min-w-0 flex-1 truncate">
                     <span className="text-sm">{i.summary}</span>
@@ -246,6 +247,19 @@ function GroupedIssueList({ issues, projects, tab }: { issues: Issue[]; projects
                     </span>
                   </span>
                   <StatusLozenge status={i.status} />
+                </Link>
+                {/* below 640px a row has no room for summary, key and status: one card per work item */}
+                <Link href={`/browse/${i.key}`} className="mb-2 block rounded-ds-lg border border-ds-border bg-ds-surface p-4 hover:bg-ds-neutral-subtle-hovered sm:hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex size-8 items-center justify-center rounded-ds bg-ds-neutral">
+                      <IssueTypeIcon type={i.type} />
+                    </span>
+                    <StatusLozenge status={i.status} />
+                  </div>
+                  <div className="mt-3 truncate text-sm font-medium">{i.summary}</div>
+                  <div className="mt-0.5 truncate text-xs text-ds-text-subtlest">
+                    {ISSUE_TYPE_META[i.type].name} • {i.key} • {projects.find((p) => p.id === i.projectId)?.name}
+                  </div>
                 </Link>
               </li>
             ))}

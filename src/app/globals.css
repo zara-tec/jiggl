@@ -162,6 +162,21 @@
   /* layout */
   --topbar-height: 48px;
   --sidebar-width: 240px;
+  /* below 1024px the sidebar is an overlay drawer */
+  --drawer-width: 320px;
+  /* horizontal page padding, see the px-page utility */
+  --page-gutter: 16px;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --page-gutter: 32px;
+  }
+}
+
+/* Page gutters: 16px on phones, 32px from 768px up */
+@utility px-page {
+  padding-inline: var(--page-gutter);
 }
 
 /* ------------------------------------------------------------------

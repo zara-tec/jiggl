@@ -53,7 +53,7 @@ export default function OfferPage({ params }: PageProps<"/projects/[key]/offers/
   const cur = settings.currency;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-page pb-10">
       <nav className="mt-3 flex items-center gap-1 text-sm text-ds-text-subtle">
         <Link href={`/projects/${project.key}/offers`} className="hover:text-ds-link hover:underline">Offers</Link>
         <span className="text-ds-text-subtlest">/</span>

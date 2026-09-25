@@ -7,11 +7,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { MoreHorizontal, Star, Plus, Share2, Settings } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useProjectByKey } from "@/hooks/useData";
-import { cn } from "@/lib/utils";
 import { ProjectAvatar } from "@/components/ui/Avatar";
 import { Button, IconButton } from "@/components/ui/Button";
 import { DropdownMenu, MenuItem } from "@/components/ui/Popover";
-import { EmptyState } from "@/components/ui/misc";
+import { EmptyState, Tabs } from "@/components/ui/misc";
 import { Lozenge } from "@/components/ui/Lozenge";
 import { PROJECT_STATUS_META } from "@/components/offers/meta";
 
@@ -60,7 +59,7 @@ export default function ProjectLayout({ children, params }: LayoutProps<"/projec
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-8 pt-4">
+      <div className="shrink-0 px-page pt-4">
         <nav className="mb-1 flex items-center gap-1 text-sm text-ds-text-subtle">
           <Link href="/projects" className="hover:text-ds-link hover:underline">
             Projects
@@ -68,7 +67,7 @@ export default function ProjectLayout({ children, params }: LayoutProps<"/projec
           <span className="text-ds-text-subtlest">/</span>
           <span>{project.name}</span>
         </nav>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-2 md:gap-4">
           <div className="flex min-w-0 items-center gap-2">
             <ProjectAvatar name={project.name} color={project.color} size={24} />
             <h1 className="ds-heading-xl truncate">{project.name}</h1>
@@ -104,33 +103,16 @@ export default function ProjectLayout({ children, params }: LayoutProps<"/projec
             </DropdownMenu>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <Button appearance="subtle" iconBefore={<Share2 />}>
+            <Button appearance="subtle" iconBefore={<Share2 />} className="max-md:hidden">
               Share
             </Button>
+            <IconButton icon={<Share2 />} label="Share" className="md:hidden" />
             <Button appearance="primary" iconBefore={<Plus />} onClick={() => openCreate({ projectId: project.id })}>
               Create
             </Button>
           </div>
         </div>
-        <div className="mt-2 flex items-center gap-1 border-b border-ds-border">
-          {tabs.map((t) => {
-            const isActive = active === t.id;
-            return (
-              <Link
-                key={t.id}
-                href={`${base}/${t.id}`}
-                className={cn(
-                  "relative -mb-px flex h-9 items-center rounded-t-ds px-2 text-sm font-medium transition-colors hover:bg-ds-neutral-subtle-hovered",
-                  isActive ? "text-ds-text-selected" : "text-ds-text-subtle hover:text-ds-text",
-                  "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-t after:bg-ds-brand-bold",
-                  isActive ? "after:opacity-100" : "after:opacity-0",
-                )}
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </div>
+        <Tabs className="mt-2" value={active} tabs={tabs.map((t) => ({ ...t, href: `${base}/${t.id}` }))} />
       </div>
       {children}
     </div>

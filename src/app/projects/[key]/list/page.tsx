@@ -84,7 +84,7 @@ export default function ListPage({ params }: PageProps<"/projects/[key]/list">) 
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-8 pb-3 pt-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-page pb-3 pt-4">
         <div className="relative w-52">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-2.5 text-ds-icon-subtle" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search list" className="ds-input h-8 py-1 pl-8" />
@@ -113,7 +113,7 @@ export default function ListPage({ params }: PageProps<"/projects/[key]/list">) 
         <span className="ml-auto text-xs text-ds-text-subtlest">{list.length} of {issues.length} work items</span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-8 pb-6">
+      <div className="min-h-0 flex-1 overflow-auto px-page pb-6">
         <table className="w-full min-w-[960px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-ds-surface">
             <tr>
