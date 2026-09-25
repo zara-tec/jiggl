@@ -17,6 +17,8 @@ import { BillableToggle, ProjectIssuePicker, TagsPicker } from "@/components/tim
 import { useEffectiveEntries } from "@/hooks/useData";
 
 const HOUR_H = 48;
+/** From this width the calendar shows the whole week; below it, one day under a strip of the seven days. */
+const WEEK_VIEW = "(min-width: 768px)";
 
 export default function CalendarPage() {
   const me = useStore((s) => s.currentUserId);
@@ -26,6 +28,7 @@ export default function CalendarPage() {
   const update = useStore((s) => s.updateTimeEntry);
   const now = useNow(30000, true);
   const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [day, setDay] = React.useState(() => startOfDay(new Date()));
   const [selected, setSelected] = React.useState<{ id: string; el: HTMLElement } | null>(null);
   const [drag, setDrag] = React.useState<{ day: Date; from: number; to: number } | null>(null);
   const [dragMove, setDragMove] = React.useState<{ id: string; day: Date; offsetMin: number; startMin: number } | null>(null);
@@ -81,6 +84,14 @@ export default function CalendarPage() {
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
 
+  const showDay = (d: Date) => {
+    setDay(d);
+    setWeekStart(startOfWeek(d, { weekStartsOn: 1 }));
+  };
+  // the arrows move by a week when the week is on screen, by a day otherwise
+  const step = (dir: 1 | -1) => (window.matchMedia(WEEK_VIEW).matches ? showDay(addWeeks(day, dir)) : showDay(addDays(day, dir)));
+  const dayTotal = mine.filter((e) => isSameDay(parseISO(e.start), day)).reduce((a, e) => a + entryDuration(e, now), 0);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <PageHeader
@@ -96,31 +107,51 @@ export default function CalendarPage() {
         <TimerBar />
       </div>
       <div className="flex flex-wrap items-center gap-2 px-page pb-2 pt-4">
-        <IconButton icon={<ChevronLeft />} label="Previous week" onClick={() => setWeekStart((w) => addWeeks(w, -1))} />
-        <IconButton icon={<ChevronRight />} label="Next week" onClick={() => setWeekStart((w) => addWeeks(w, 1))} />
-        <Button appearance="subtle" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
-        <span className="ds-heading-sm ml-2">{format(weekStart, "d MMM")} – {format(addDays(weekStart, 6), "d MMM yyyy")}</span>
-        <span className="ml-auto text-sm text-ds-text-subtle">Week total <span className="tabular-nums font-semibold text-ds-text">{formatDurationClock(weekTotal)}</span></span>
+        <IconButton icon={<ChevronLeft />} label="Previous" onClick={() => step(-1)} />
+        <IconButton icon={<ChevronRight />} label="Next" onClick={() => step(1)} />
+        <Button appearance="subtle" onClick={() => showDay(startOfDay(new Date()))}>Today</Button>
+        <span className="ds-heading-sm ml-2 max-md:hidden">{format(weekStart, "d MMM")} – {format(addDays(weekStart, 6), "d MMM yyyy")}</span>
+        <span className="ds-heading-sm ml-1 md:hidden">{format(day, "EEE d MMM")}</span>
+        <span className="ml-auto text-sm text-ds-text-subtle">
+          <span className="max-md:hidden">Week total</span>
+          <span className="md:hidden">Day</span> <span className="tabular-nums font-semibold text-ds-text"><span className="max-md:hidden">{formatDurationClock(weekTotal)}</span><span className="md:hidden">{formatDurationClock(dayTotal)}</span></span>
+        </span>
       </div>
-      {/* seven days need about 640px: narrower screens scroll the week sideways, header and hours together */}
-      <div className="mx-[var(--page-gutter)] mb-6 flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden rounded-ds-md border border-ds-border">
-        <div className="grid min-w-[640px] shrink-0 grid-cols-[56px_repeat(7,1fr)] border-b border-ds-border bg-ds-surface">
-          <div />
+      <div className="mx-[var(--page-gutter)] mb-6 flex min-h-0 flex-1 flex-col overflow-hidden rounded-ds-md border border-ds-border">
+        {/* below 768px this row is a strip to pick the day shown underneath */}
+        <div className="grid shrink-0 grid-cols-7 border-b border-ds-border bg-ds-surface md:grid-cols-[56px_repeat(7,1fr)]">
+          <div className="max-md:hidden" />
           {days.map((d) => {
             const dayList = mine.filter((e) => isSameDay(parseISO(e.start), d));
             const t = dayList.filter((e) => !e.virtual).reduce((a, e) => a + entryDuration(e, now), 0);
             const al = dayList.filter((e) => e.virtual).reduce((a, e) => a + entryDuration(e, now), 0);
+            const picked = isSameDay(d, day);
             return (
-              <div key={d.toISOString()} className={cn("border-l border-ds-border px-2 py-2 text-center", isToday(d) && "bg-ds-selected")}>
+              <button
+                key={d.toISOString()}
+                type="button"
+                onClick={() => showDay(d)}
+                aria-pressed={picked}
+                className={cn(
+                  "min-w-0 cursor-default px-0.5 py-2 text-center md:border-l md:border-ds-border md:px-2",
+                  isToday(d) && "md:bg-ds-selected",
+                  "max-md:cursor-pointer max-md:hover:bg-ds-neutral-subtle-hovered",
+                  picked && "max-md:shadow-[inset_0_-2px_0_var(--ds-border-brand)] max-md:bg-ds-selected",
+                )}
+              >
                 <div className="text-[11px] uppercase text-ds-text-subtlest">{format(d, "EEE")}</div>
                 <div className={cn("text-lg font-semibold leading-6", isToday(d) ? "text-ds-text-selected" : "text-ds-text")}>{format(d, "d")}</div>
-                <div className="tabular-nums text-[11px] text-ds-text-subtle">{t ? formatDurationClock(t) : ""}{al ? <span className="text-ds-text-subtlest">{t ? " + " : ""}{formatDurationClock(al)} alloc.</span> : ""}</div>
-              </div>
+                <div className="tabular-nums truncate text-[11px] text-ds-text-subtle">
+                  {t ? formatDurationClock(t) : ""}
+                  {al ? <span className="text-ds-text-subtlest max-md:hidden">{t ? " + " : ""}{formatDurationClock(al)} alloc.</span> : ""}
+                  {!t && al ? <span className="text-ds-text-subtlest md:hidden">{formatDurationClock(al)}</span> : ""}
+                </div>
+              </button>
             );
           })}
         </div>
-        <div ref={scrollRef} className="relative min-h-0 min-w-[640px] flex-1 overflow-y-auto select-none" onMouseUp={finishDrag} onMouseLeave={finishDrag}>
-          <div className="grid grid-cols-[56px_repeat(7,1fr)]" style={{ height: HOUR_H * 24 }}>
+        <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto select-none" onMouseUp={finishDrag} onMouseLeave={finishDrag}>
+          <div className="grid grid-cols-[48px_1fr] md:grid-cols-[56px_repeat(7,1fr)]" style={{ height: HOUR_H * 24 }}>
             <div className="relative">
               {Array.from({ length: 24 }).map((_, h) => (
                 <div key={h} className="absolute right-2 -translate-y-1/2 text-[10px] text-ds-text-subtlest" style={{ top: h * HOUR_H }}>{h === 0 ? "" : `${String(h).padStart(2, "0")}:00`}</div>
@@ -131,7 +162,7 @@ export default function CalendarPage() {
               const virtuals = dayEntries.filter((e) => e.virtual);
               const overlaps = (x: TimeEntry, y: TimeEntry) => parseISO(x.start) < parseISO(y.stop ?? now.toISOString()) && parseISO(y.start) < parseISO(x.stop ?? now.toISOString());
               return (
-                <div key={d.toISOString()} className={cn("relative border-l border-ds-border", isToday(d) && "bg-ds-selected/40")} onMouseDown={(e) => onColMouseDown(e, d)} onMouseMove={onColMouseMove}>
+                <div key={d.toISOString()} className={cn("relative border-l border-ds-border", isToday(d) && "bg-ds-selected/40", !isSameDay(d, day) && "max-md:hidden")} onMouseDown={(e) => onColMouseDown(e, d)} onMouseMove={onColMouseMove}>
                   {Array.from({ length: 24 }).map((_, h) => (
                     <div key={h} className="absolute inset-x-0 border-t border-ds-border" style={{ top: h * HOUR_H }} />
                   ))}
