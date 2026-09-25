@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { addDays } from "date-fns";
 import { useStore } from "@/lib/store";
 import { buildAllocationEntries, earliestAllocation } from "@/lib/allocations";
+import { projectTeam } from "@/lib/team";
 import type { ID, Issue, Offer, Project, TimeEntry, User } from "@/lib/types";
 import { entryDuration, sum } from "@/lib/utils";
 
@@ -56,6 +57,13 @@ export function useEffectiveEntries(opts?: { includeFuture?: boolean }): TimeEnt
     const virt = buildAllocationEntries({ from, to, allocations: active, projects, settings, holidays, timeOffs, realEntries: real });
     return virt.length ? [...real, ...virt] : real;
   }, [real, allocations, projects, settings, holidays, timeOffs, includeFuture]);
+}
+
+/** Members who work on the project (everyone when the project has no explicit team) */
+export function useProjectTeam(projectId?: ID): User[] {
+  const users = useStore((s) => s.users);
+  const project = useStore((s) => (projectId ? s.projects.find((p) => p.id === projectId) : undefined));
+  return useMemo(() => (project ? projectTeam(project, users) : users), [project, users]);
 }
 
 export function useProjectIssues(projectId?: ID) {

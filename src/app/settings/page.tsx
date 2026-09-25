@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { AVATAR_COLORS } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { HolidaysSection } from "@/components/allocations/TimeOffSection";
+import { HolidaysSection } from "@/components/allocations/HolidaysSection";
+import { ChangePasswordSection } from "@/components/settings/ChangePassword";
+import { InstanceSection } from "@/components/settings/InstanceSection";
 import { useTheme, type Theme } from "@/lib/theme";
 import { Moon, Monitor, Sun } from "lucide-react";
 
@@ -55,6 +57,10 @@ export default function SettingsPage() {
               {saved && <span className="text-sm text-ds-text-success">Saved</span>}
             </div>
           </section>
+
+          <ChangePasswordSection />
+
+          <InstanceSection />
 
           <section>
             <h2 className="ds-heading-md mb-1">Appearance</h2>

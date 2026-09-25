@@ -31,6 +31,7 @@ function bootstrap(): BootstrapPayload {
       issues: seed.issues,
       timeEntries: seed.timeEntries,
       offers: seed.offers,
+      offerBaselines: seed.offerBaselines,
       allocations: seed.allocations,
       holidays: seed.holidays,
       timeOffs: seed.timeOffs,

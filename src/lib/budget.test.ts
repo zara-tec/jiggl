@@ -1,7 +1,7 @@
 import { addDays, subDays } from "date-fns";
 import { describe, expect, it } from "vitest";
 import { burnSeries, computeProjectBudget, healthOf } from "./budget";
-import { SETTINGS, makeEntry, makeIssue, makeLine, makeOffer, makeProject, makeUser } from "@/test/fixtures";
+import { SETTINGS, makeActivity, makeBaseline, makeEntry, makeIssue, makeLine, makeOffer, makeProject, makeUser } from "@/test/fixtures";
 
 const now = new Date("2026-03-16T12:00:00.000Z"); // a Monday
 const daysAgo = (n: number) => subDays(now, n).toISOString();
@@ -138,5 +138,26 @@ describe("burnSeries", () => {
     const undated = makeOffer({ id: "u", status: "ordered", lines: [makeLine({ id: "x", hours: 8 })] });
     const series = burnSeries({ project, offers: [undated], entries: entries.slice(0, 1), now });
     for (const p of series) expect(p.planned).toBeNull();
+  });
+});
+
+describe("forecast at completion", () => {
+  const planned = makeOffer({
+    id: "of",
+    status: "ordered",
+    lines: [makeLine({ id: "lf", qty: 10, unitPrice: 100, hours: 10, activities: [makeActivity({ id: "a", effort: { u1: 12 } }), makeActivity({ id: "x", effort: { u1: 2 }, unsold: true, order: 2 })] })],
+  });
+  const atOrder = makeBaseline({ id: "b", offerId: "of", kind: "order", lines: [makeLine({ id: "lf", qty: 10, unitPrice: 100, hours: 10, activities: [makeActivity({ id: "a", effort: { u1: 10 } })] })], costRates: { u1: 40 }, billingRates: { u1: 100 } });
+
+  it("values the orders' forecast at the rates in force and remembers the plan frozen at order", () => {
+    const b = computeProjectBudget({ project, offers: [planned], issues: [], entries: [], users, projects: [project], settings: SETTINGS, baselines: [atOrder], now });
+    expect(b.forecast).toEqual({ hours: 14, cost: 700, unsoldHours: 2, unsoldCost: 100, revenue: 1000, margin: 300, atOrder: { hours: 10, cost: 400, margin: 600 } });
+  });
+
+  it("has no order reference when one of the orders lacks its baseline, and ignores open offers", () => {
+    const b = computeProjectBudget({ project, offers: [planned, ...offers], issues, entries: [], users, projects: [project], settings: SETTINGS, baselines: [atOrder], now });
+    expect(b.forecast.atOrder).toBeUndefined();
+    expect(b.forecast.hours).toBe(14);
+    expect(computeProjectBudget({ project, offers, issues, entries: [], users, projects: [project], settings: SETTINGS, now }).forecast).toEqual({ hours: 0, cost: 0, unsoldHours: 0, unsoldCost: 0, revenue: 2600, margin: 2600 });
   });
 });

@@ -6,8 +6,10 @@ import { nanoid } from "nanoid";
 import { formatISO } from "date-fns";
 import type {
   Allocation,
+  BaselineKind,
   Client,
   Comment,
+  ForecastActivity,
   Holiday,
   ID,
   TimeOff,
@@ -16,6 +18,7 @@ import type {
   IssueStatus,
   IssueType,
   Offer,
+  OfferBaseline,
   OfferLine,
   OfferStatus,
   Project,
@@ -26,6 +29,10 @@ import type {
   WorkspaceSettings,
 } from "./types";
 import { applyRate } from "./rates";
+import { captureBaseline } from "./forecast";
+import { scheduleLines } from "./schedule";
+import { forecastMembers } from "./forecast";
+import { withTeamMembers } from "./team";
 
 const nowIso = () => formatISO(new Date());
 
@@ -74,6 +81,7 @@ export interface BootstrapPayload {
     issues: Issue[];
     timeEntries: TimeEntry[];
     offers: Offer[];
+    offerBaselines: OfferBaseline[];
     allocations: Allocation[];
     holidays: Holiday[];
     timeOffs: TimeOff[];
@@ -89,6 +97,10 @@ export interface UIState {
   createIssueDefaults?: Partial<CreateIssueInput>;
   timerDraft: TimerDraft;
   timerMode: "timer" | "manual";
+  /** Unit of the cells in the forecast matrix */
+  forecastUnit: "hours" | "days";
+  /** Optional columns currently shown, per table ("offerLines", "forecast") */
+  tableColumns: Record<string, string[]>;
 }
 
 export interface AppState {
@@ -107,6 +119,7 @@ export interface AppState {
   issues: Issue[];
   timeEntries: TimeEntry[];
   offers: Offer[];
+  offerBaselines: OfferBaseline[];
   allocations: Allocation[];
   holidays: Holiday[];
   timeOffs: TimeOff[];
@@ -121,6 +134,8 @@ export interface AppState {
   toggleStarIssue: (id: ID) => void;
   setTimerDraft: (patch: Partial<TimerDraft>) => void;
   setTimerMode: (mode: "timer" | "manual") => void;
+  setForecastUnit: (unit: "hours" | "days") => void;
+  toggleTableColumn: (table: string, column: string) => void;
 
   // projects
   createProject: (input: Omit<Project, "id" | "issueCounter" | "offerCounter" | "createdAt">) => Project;
@@ -159,8 +174,13 @@ export interface AppState {
   deleteClient: (id: ID) => void;
   createTag: (name: string) => Tag;
   deleteTag: (id: ID) => void;
-  addUser: (input: Omit<User, "id">) => User;
+  /** Add a member; `id` is given when the server created the row first (invite with a welcome password) */
+  addUser: (input: Omit<User, "id"> & { id?: ID }) => User;
   updateUser: (id: ID, patch: Partial<User>) => void;
+  /** Explicit team of a project (the lead is always in); undefined opens the project to everyone */
+  setProjectTeam: (projectId: ID, memberIds: ID[] | undefined) => void;
+  addProjectMember: (projectId: ID, userId: ID) => void;
+  removeProjectMember: (projectId: ID, userId: ID) => void;
 
   // offers
   createOffer: (projectId: ID, input?: Partial<Pick<Offer, "title" | "ownerId" | "validUntil">>) => Offer;
@@ -171,8 +191,18 @@ export interface AppState {
   updateOfferLine: (offerId: ID, lineId: ID, patch: Partial<OfferLine>) => void;
   removeOfferLine: (offerId: ID, lineId: ID) => void;
   moveOfferLine: (offerId: ID, lineId: ID, toIndex: number) => void;
-  /** Convert an accepted offer into work items. Returns the created issues. */
+  /** Convert an accepted offer into work items (or create the items of lines added to an order). Returns the created issues. */
   convertOffer: (offerId: ID, mapping: { lineId: ID; issueType: "epic" | "story" | "task"; assigneeId?: ID; include: boolean }[]) => Issue[];
+
+  // forecast (activities under a line, effort per member) and baselines
+  addForecastActivity: (offerId: ID, lineId: ID, input?: Partial<ForecastActivity>) => ForecastActivity;
+  updateForecastActivity: (offerId: ID, lineId: ID, activityId: ID, patch: Partial<ForecastActivity>) => void;
+  removeForecastActivity: (offerId: ID, lineId: ID, activityId: ID) => void;
+  /** Set the forecast hours of a member on an activity; 0 removes the member from it */
+  setForecastEffort: (offerId: ID, lineId: ID, activityId: ID, userId: ID, hours: number) => void;
+  /** Freeze the offer (lines, forecast, rates) as a named baseline */
+  createBaseline: (offerId: ID, input: { name: string; note?: string; kind?: BaselineKind }) => OfferBaseline | undefined;
+  deleteBaseline: (id: ID) => void;
 
   // allocations, holidays, time off
   addAllocation: (input: Omit<Allocation, "id">) => Allocation;
@@ -210,10 +240,22 @@ const defaultUI = (): UIState => ({
   createIssueDefaults: undefined,
   timerDraft: { description: "", tagIds: [], billable: false },
   timerMode: "timer",
+  forecastUnit: "hours",
+  tableColumns: {},
 });
 
 function pushRecent(list: ID[], id: ID, max = 12) {
   return [id, ...list.filter((x) => x !== id)].slice(0, max);
+}
+
+/** Lines with the dates of dependent lines recomputed from their predecessors (same array when nothing moves) */
+function scheduled(s: Pick<AppState, "settings" | "holidays">, lines: Offer["lines"]): Offer["lines"] {
+  return scheduleLines(lines, { cal: { workDays: s.settings.workDays, holidays: s.holidays }, hoursPerDay: s.settings.hoursPerDay });
+}
+
+/** Offers with the activities of one line replaced; other offers and lines keep their identity */
+function withActivities(s: Pick<AppState, "offers">, offerId: ID, lineId: ID, fn: (activities: ForecastActivity[]) => ForecastActivity[]): Offer[] {
+  return s.offers.map((o) => (o.id === offerId ? { ...o, updatedAt: nowIso(), lines: o.lines.map((l) => (l.id === lineId ? { ...l, activities: fn(l.activities ?? []) } : l)) } : o));
 }
 
 export const useStore = create<AppState>()(
@@ -232,6 +274,7 @@ export const useStore = create<AppState>()(
       issues: [],
       timeEntries: [],
       offers: [],
+      offerBaselines: [],
       allocations: [],
       holidays: [],
       timeOffs: [],
@@ -254,6 +297,12 @@ export const useStore = create<AppState>()(
         })),
       setTimerDraft: (patch) => set((s) => ({ ui: { ...s.ui, timerDraft: { ...s.ui.timerDraft, ...patch } } })),
       setTimerMode: (mode) => set((s) => ({ ui: { ...s.ui, timerMode: mode } })),
+      setForecastUnit: (unit) => set((s) => ({ ui: { ...s.ui, forecastUnit: unit } })),
+      toggleTableColumn: (table, column) =>
+        set((s) => {
+          const cur = s.ui.tableColumns?.[table] ?? [];
+          return { ui: { ...s.ui, tableColumns: { ...(s.ui.tableColumns ?? {}), [table]: cur.includes(column) ? cur.filter((c) => c !== column) : [...cur, column] } } };
+        }),
 
       /* ---------------- Projects ---------------- */
       createProject: (input) => {
@@ -267,6 +316,7 @@ export const useStore = create<AppState>()(
       deleteProject: (id) =>
         set((s) => ({
           offers: s.offers.filter((o) => o.projectId !== id),
+          offerBaselines: s.offerBaselines.filter((b) => b.projectId !== id),
           allocations: s.allocations.filter((a) => a.projectId !== id),
           projects: s.projects.filter((p) => p.id !== id),
           issues: s.issues.filter((i) => i.projectId !== id),
@@ -493,10 +543,17 @@ export const useStore = create<AppState>()(
           timeEntries: s.timeEntries.map((t) => (t.tagIds.includes(id) ? { ...t, tagIds: t.tagIds.filter((x) => x !== id) } : t)),
         })),
       addUser: (input) => {
-        const user: User = { ...input, id: nanoid(8) };
-        set((s) => ({ users: [...s.users, user] }));
+        const { id, ...rest } = input;
+        const user: User = { ...rest, id: id ?? nanoid(8) };
+        set((s) => ({ users: [...s.users.filter((u) => u.id !== user.id), user] }));
         return user;
       },
+      setProjectTeam: (projectId, memberIds) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? { ...p, memberIds: memberIds ? memberIds.filter((x, i, a) => x !== p.leadId && a.indexOf(x) === i) : undefined } : p)) })),
+      addProjectMember: (projectId, userId) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId ? withTeamMembers({ ...p, memberIds: p.memberIds ?? [] }, [userId]) : p)) })),
+      removeProjectMember: (projectId, userId) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === projectId && p.memberIds?.includes(userId) ? { ...p, memberIds: p.memberIds.filter((x) => x !== userId) } : p)) })),
       updateUser: (id, patch) => set((s) => ({ users: s.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) })),
 
       /* ---------------- Offers ---------------- */
@@ -524,6 +581,7 @@ export const useStore = create<AppState>()(
       deleteOffer: (id) =>
         set((s) => ({
           offers: s.offers.filter((o) => o.id !== id),
+          offerBaselines: s.offerBaselines.filter((b) => b.offerId !== id),
           issues: s.issues.map((i) => (i.offerId === id ? { ...i, offerId: undefined, offerLineId: undefined } : i)),
         })),
       setOfferStatus: (id, status) =>
@@ -548,16 +606,20 @@ export const useStore = create<AppState>()(
           order: offer.lines.length + 1,
           ...input,
         };
-        set((st) => ({ offers: st.offers.map((o) => (o.id === offerId ? { ...o, lines: [...o.lines, line], updatedAt: nowIso() } : o)) }));
+        set((st) => ({ offers: st.offers.map((o) => (o.id === offerId ? { ...o, lines: scheduled(st, [...o.lines, line]), updatedAt: nowIso() } : o)) }));
         return line;
       },
       updateOfferLine: (offerId, lineId, patch) =>
         set((s) => ({
-          offers: s.offers.map((o) => (o.id === offerId ? { ...o, lines: o.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l)), updatedAt: nowIso() } : o)),
+          offers: s.offers.map((o) => (o.id === offerId ? { ...o, lines: scheduled(s, o.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l))), updatedAt: nowIso() } : o)),
         })),
       removeOfferLine: (offerId, lineId) =>
         set((s) => ({
-          offers: s.offers.map((o) => (o.id === offerId ? { ...o, lines: o.lines.filter((l) => l.id !== lineId).map((l, i) => ({ ...l, order: i + 1 })), updatedAt: nowIso() } : o)),
+          offers: s.offers.map((o) =>
+            o.id === offerId
+              ? { ...o, lines: o.lines.filter((l) => l.id !== lineId).map((l, i) => ({ ...l, order: i + 1, ...(l.predecessorId === lineId ? { predecessorId: undefined } : {}) })), updatedAt: nowIso() }
+              : o,
+          ),
         })),
       moveOfferLine: (offerId, lineId, toIndex) =>
         set((s) => ({
@@ -601,11 +663,56 @@ export const useStore = create<AppState>()(
             const line = offer.lines.find((l) => l.id === lineId)!;
             return { ...i, offerId: offer.id, offerLineId: lineId, startDate: line.plannedStart ? formatISO(new Date(line.plannedStart)) : i.startDate };
           }),
-          offers: st.offers.map((o) => (o.id === offerId ? { ...o, status: "ordered" as const, orderedAt: nowIso(), updatedAt: nowIso(), lines: o.lines.map((l) => (lineIssue[l.id] ? { ...l, issueId: lineIssue[l.id] } : l)) } : o)),
-          projects: st.projects.map((p) => (p.id === offer.projectId && p.status === "prospect" ? { ...p, status: "active" as const } : p)),
+          offers: st.offers.map((o) => (o.id === offerId ? { ...o, status: "ordered" as const, orderedAt: o.orderedAt ?? nowIso(), updatedAt: nowIso(), lines: o.lines.map((l) => (lineIssue[l.id] ? { ...l, issueId: lineIssue[l.id] } : l)) } : o)),
+          projects: st.projects.map((p) => {
+            if (p.id !== offer.projectId) return p;
+            const active = p.status === "prospect" ? { ...p, status: "active" as const } : p;
+            return withTeamMembers(active, forecastMembers(offer.lines));
+          }),
         }));
+        // the order baseline: what was sold and planned when the client committed
+        if (!get().offerBaselines.some((b) => b.offerId === offerId && b.kind === "order")) {
+          get().createBaseline(offerId, { name: "Order", kind: "order", note: "Taken when the offer became an order" });
+        }
         return created;
       },
+
+      /* ---------------- Forecast & baselines ---------------- */
+      addForecastActivity: (offerId, lineId, input) => {
+        const line = get().offers.find((o) => o.id === offerId)?.lines.find((l) => l.id === lineId);
+        const activity: ForecastActivity = { id: nanoid(8), name: "", effort: {}, order: (line?.activities?.length ?? 0) + 1, ...input };
+        set((s) => ({ offers: withActivities(s, offerId, lineId, (acts) => [...acts, activity]) }));
+        return activity;
+      },
+      updateForecastActivity: (offerId, lineId, activityId, patch) =>
+        set((s) => ({ offers: withActivities(s, offerId, lineId, (acts) => acts.map((a) => (a.id === activityId ? { ...a, ...patch } : a))) })),
+      removeForecastActivity: (offerId, lineId, activityId) =>
+        set((s) => ({ offers: withActivities(s, offerId, lineId, (acts) => acts.filter((a) => a.id !== activityId).map((a, i) => ({ ...a, order: i + 1 }))) })),
+      setForecastEffort: (offerId, lineId, activityId, userId, hours) =>
+        set((s) => ({
+          offers: withActivities(s, offerId, lineId, (acts) =>
+            acts.map((a) => {
+              if (a.id !== activityId) return a;
+              const effort = { ...(a.effort ?? {}) };
+              if (!hours || hours <= 0 || Number.isNaN(hours)) delete effort[userId];
+              else effort[userId] = hours;
+              return { ...a, effort };
+            }),
+          ),
+        })),
+      createBaseline: (offerId, input) => {
+        const s = get();
+        const offer = s.offers.find((o) => o.id === offerId);
+        if (!offer) return undefined;
+        const project = s.projects.find((p) => p.id === offer.projectId);
+        const baseline: OfferBaseline = {
+          id: nanoid(8),
+          ...captureBaseline(offer, { users: s.users, project, name: input.name.trim() || "Baseline", kind: input.kind ?? "manual", note: input.note?.trim() || undefined, createdBy: s.currentUserId, now: nowIso() }),
+        };
+        set((st) => ({ offerBaselines: [...st.offerBaselines, baseline] }));
+        return baseline;
+      },
+      deleteBaseline: (id) => set((s) => ({ offerBaselines: s.offerBaselines.filter((b) => b.id !== id) })),
 
       /* ---------------- Allocations, holidays, time off ---------------- */
       addAllocation: (input) => {
@@ -615,7 +722,7 @@ export const useStore = create<AppState>()(
       },
       updateAllocation: (id, patch) => set((s) => ({ allocations: s.allocations.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
       removeAllocation: (id) => set((s) => ({ allocations: s.allocations.filter((a) => a.id !== id) })),
-      addHoliday: (input) => set((s) => ({ holidays: [...s.holidays.filter((h) => h.date !== input.date), { ...input, id: nanoid(8) }] })),
+      addHoliday: (input) => set((s) => ({ holidays: [...s.holidays.filter((h) => h.date !== input.date || (h.to ?? h.date) !== (input.to ?? input.date)), { ...input, id: nanoid(8) }] })),
       removeHoliday: (id) => set((s) => ({ holidays: s.holidays.filter((h) => h.id !== id) })),
       addTimeOff: (input) => set((s) => ({ timeOffs: [...s.timeOffs, { ...input, id: nanoid(8) }] })),
       removeTimeOff: (id) => set((s) => ({ timeOffs: s.timeOffs.filter((t) => t.id !== id) })),
@@ -671,6 +778,7 @@ export const useStore = create<AppState>()(
           issues: d.issues,
           timeEntries: d.timeEntries,
           offers: d.offers,
+          offerBaselines: d.offerBaselines ?? [],
           allocations: d.allocations,
           holidays: d.holidays,
           timeOffs: d.timeOffs,

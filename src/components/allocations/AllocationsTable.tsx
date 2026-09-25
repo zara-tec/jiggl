@@ -6,6 +6,7 @@ import { Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Project } from "@/lib/types";
 import { allocatedPercent } from "@/lib/allocations";
+import { useProjectTeam } from "@/hooks/useData";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Select } from "@/components/ui/Select";
@@ -14,6 +15,7 @@ import { IssueTypeIcon } from "@/components/issues/icons";
 /** Fixed allocations of members to a project (Settings → Time mode: Allocation) */
 export function AllocationsTable({ project }: { project: Project }) {
   const users = useStore((s) => s.users);
+  const team = useProjectTeam(project.id);
   const allocations = useStore((s) => s.allocations);
   const issues = useStore((s) => s.issues);
   const settings = useStore((s) => s.settings);
@@ -81,9 +83,9 @@ export function AllocationsTable({ project }: { project: Project }) {
           placeholder="Add member"
           appearance="chip"
           chipLabel="Add allocation"
-          options={users.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="xs" />, description: `${allocatedPercent(u.id, today, allocations)}% allocated today` }))}
+          options={team.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="xs" />, description: `${allocatedPercent(u.id, today, allocations)}% allocated today` }))}
         />
-        <Button appearance="subtle" iconBefore={<Plus />} onClick={() => add({ projectId: project.id, userId: users[0].id, percent: 20, from: format(new Date(), "yyyy-MM-dd") })}>Quick add</Button>
+        <Button appearance="subtle" iconBefore={<Plus />} disabled={!team.length} onClick={() => add({ projectId: project.id, userId: team[0].id, percent: 20, from: format(new Date(), "yyyy-MM-dd") })}>Quick add</Button>
       </div>
     </div>
   );

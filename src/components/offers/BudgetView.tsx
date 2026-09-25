@@ -19,12 +19,13 @@ import { offerTotals } from "@/lib/offers";
 /** Sold vs consumed for one project: the PM view. */
 export function BudgetView({ project }: { project: Project }) {
   const offers = useStore((s) => s.offers);
+  const baselines = useStore((s) => s.offerBaselines);
   const issues = useStore((s) => s.issues);
   const users = useStore((s) => s.users);
   const projects = useStore((s) => s.projects);
   const settings = useStore((s) => s.settings);
   const entries = useEffectiveEntries();
-  const budget = React.useMemo(() => computeProjectBudget({ project, offers, issues, entries, users, projects, settings }), [project, offers, issues, entries, users, projects, settings]);
+  const budget = React.useMemo(() => computeProjectBudget({ project, offers, issues, entries, users, projects, settings, baselines }), [project, offers, issues, entries, users, projects, settings, baselines]);
   const burn = React.useMemo(() => burnSeries({ project, offers, entries }), [project, offers, entries]);
   const cur = settings.currency;
   const isTm = project.pricing === "tm";
@@ -33,6 +34,8 @@ export function BudgetView({ project }: { project: Project }) {
   const remainingHours = budget.sold.hours - consumedHours;
   const margin = isTm ? budget.consumed.value - budget.consumed.cost : budget.sold.amount - budget.consumed.cost;
   const open = offers.filter((o) => o.projectId === project.id && o.status !== "ordered");
+  const fc = budget.forecast;
+  const fcDeltaMargin = fc.atOrder ? fc.margin - fc.atOrder.margin : 0;
 
   return (
     <div className="mt-4">
@@ -81,6 +84,17 @@ export function BudgetView({ project }: { project: Project }) {
             <span>{budget.sold.hours}h sold</span>
           </div>
         </div>
+      )}
+
+      {budget.sold.orders > 0 && (
+        <ChartCard title="Forecast at completion" subtitle="The orders' forecast matrices (who will spend what, at today's cost rates) against what was sold, and against the plan frozen when the orders were placed." className="mt-6">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatTile label="Forecast effort" value={fc.hours ? `${Math.round(fc.hours)}h` : "—"} hint={fc.hours ? `${formatDays(fc.hours * 3600, settings)} · ${budget.sold.hours ? `${fc.hours > budget.sold.hours ? "+" : ""}${Math.round(fc.hours - budget.sold.hours)}h vs sold` : "nothing sold in hours"}` : "No forecast on the orders yet"} />
+            <StatTile label="Forecast cost" value={formatMoney(fc.cost, cur)} hint={fc.atOrder ? `${formatMoney(fc.atOrder.cost, cur)} when ordered` : "Hours × cost rate in force today"} />
+            <StatTile label="Expected margin" value={fc.hours ? <span className={cn(fc.margin < 0 && "text-ds-text-danger")}>{formatMoney(fc.margin, cur)}</span> : "—"} hint={!fc.hours ? "Needs a forecast on the orders" : fc.atOrder ? `${formatMoney(fc.atOrder.margin, cur)} when ordered · ${fcDeltaMargin > 0 ? "+" : ""}${formatMoney(fcDeltaMargin, cur)}` : isTm ? "Forecast billing minus forecast cost" : "Sold minus forecast cost"} />
+            <StatTile label="Unsold work" value={<span className={cn(fc.unsoldHours > 0 && "text-ds-text-danger")}>{fc.unsoldHours ? `${Math.round(fc.unsoldHours)}h` : "None"}</span>} hint={fc.unsoldHours ? `${formatMoney(fc.unsoldCost, cur)} of cost the client did not buy` : "Activities flagged as unsold in the forecast"} />
+          </div>
+        </ChartCard>
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">

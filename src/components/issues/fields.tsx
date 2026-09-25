@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useProjectTeam } from "@/hooks/useData";
 import { ISSUE_TYPES, PRIORITIES, STATUSES, type ID, type IssuePriority, type IssueStatus, type IssueType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Avatar, ProjectAvatar } from "@/components/ui/Avatar";
@@ -98,6 +99,7 @@ export function UserSelect({
   className,
   showAssignToMe,
   avatarOnly,
+  projectId,
 }: {
   value?: ID;
   onChange: (v: ID | undefined) => void;
@@ -106,11 +108,16 @@ export function UserSelect({
   className?: string;
   showAssignToMe?: boolean;
   avatarOnly?: boolean;
+  /** Offer only the team of this project (plus the current value) */
+  projectId?: ID;
 }) {
   const users = useStore((s) => s.users);
+  const team = useProjectTeam(projectId);
   const me = useStore((s) => s.currentUserId);
-  const options: SelectOption[] = users.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="sm" />, description: u.email }));
+  const pool = projectId ? team : users;
   const selected = users.find((u) => u.id === value);
+  const listed = selected && !pool.includes(selected) ? [...pool, selected] : pool;
+  const options: SelectOption[] = listed.map((u) => ({ value: u.id, label: u.name, icon: <Avatar user={u} size="sm" />, description: pool.includes(u) ? u.email : "Not in the project team" }));
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
       <Select

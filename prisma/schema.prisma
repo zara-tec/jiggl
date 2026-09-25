@@ -16,6 +16,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Settings of the whole installation (one row, id "main"): who may register
+/// and which account owns the instance. Created on first use.
+model Instance {
+  id             String   @id
+  registration   String   @default("open")
+  domains        Json
+  ownerAccountId String?
+  updatedAt      DateTime @updatedAt
+}
+
 model Account {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -40,6 +50,7 @@ model Workspace {
   issues      Issue[]
   timeEntries TimeEntry[]
   offers      Offer[]
+  offerBaselines OfferBaseline[]
   allocations Allocation[]
   holidays    Holiday[]
   timeOffs    TimeOff[]
@@ -101,6 +112,7 @@ model Project {
   status       String
   billingRates Json
   memberRates  Json
+  memberIds    Json?
   issueCounter Int
   offerCounter Int
   starred      Boolean?
@@ -209,6 +221,30 @@ model Offer {
   @@index([workspaceId, projectId])
 }
 
+/// Frozen copy of an offer (lines, forecast activities and the rates in force)
+/// taken when it became an order or on demand, to compare later revisions with.
+model OfferBaseline {
+  workspaceId  String
+  id           String
+  offerId      String
+  projectId    String
+  name         String
+  note         String?
+  kind         String
+  createdAt    String
+  createdBy    String
+  discountPct  Float?
+  lines        Json
+  costRates    Json
+  billingRates Json
+  syncedAt     DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, offerId])
+  @@index([workspaceId, projectId])
+}
+
 model Allocation {
   workspaceId String
   id          String
@@ -229,7 +265,9 @@ model Holiday {
   workspaceId String
   id          String
   date        String
+  to          String?
   name        String
+  kind        String?
   syncedAt    DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 

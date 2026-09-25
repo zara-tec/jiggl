@@ -15,6 +15,9 @@ export const GET = handler(async () => {
     readWorkspace(session.workspaceId),
   ]);
   if (!account || !ws) throw new HttpError(404, "Workspace not found");
+  // which members can sign in (linked to an account): read-only information for the Team page
+  const linked = new Set((await prisma.member.findMany({ where: { workspaceId: ws.workspace.id, accountId: { not: null } }, select: { id: true } })).map((m) => m.id));
+  ws.data.users = (ws.data.users as { id: string }[]).map((u) => ({ ...u, linked: linked.has(u.id) }));
   return NextResponse.json({
     session: {
       accountId: account.id,

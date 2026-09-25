@@ -1,5 +1,6 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
 import type { Allocation, Holiday, ID, Project, TimeEntry, TimeOff, WorkspaceSettings } from "./types";
+import { isHoliday } from "./holidays";
 
 export const VIRTUAL_PREFIX = "va_";
 
@@ -9,8 +10,7 @@ export function isVirtual(e: TimeEntry) {
 
 export function isWorkingDay(date: Date, settings: Pick<WorkspaceSettings, "workDays">, holidays: Holiday[]) {
   if (!settings.workDays.includes(date.getDay())) return false;
-  const key = format(date, "yyyy-MM-dd");
-  return !holidays.some((h) => h.date === key);
+  return !isHoliday(format(date, "yyyy-MM-dd"), holidays);
 }
 
 export function isOff(userId: ID, date: Date, timeOffs: TimeOff[]) {

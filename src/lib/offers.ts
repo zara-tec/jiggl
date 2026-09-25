@@ -48,8 +48,9 @@ export function offerTotals(offer: Offer) {
   return { subtotal, discount, total, hours };
 }
 
-export function isOfferEditable(offer: Offer) {
-  return offer.status !== "ordered";
+/** An order is what has been sold: its lines still change (revisions, extra scope), baselines keep the history */
+export function isOrder(offer: Pick<Offer, "status">) {
+  return offer.status === "ordered";
 }
 
 export function nextOfferNumber(projectKey: string, counter: number) {

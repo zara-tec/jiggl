@@ -44,7 +44,7 @@ On first use, create an account and a workspace at **/register**. Ticking "Load 
 - **Authentication**, small and self-contained: passwords hashed with `scrypt`, session in a signed httpOnly cookie (JWT), 30 days. `src/proxy.ts` protects the pages, API routes call `requireSession()`.
 - **Multi-workspace**: an account can belong to several workspaces (profile menu → switch or create). Someone added to the Team with their email finds the workspace when they sign up.
 - **Sync**: the Zustand store stays the client cache. On load `GET /api/bootstrap` fetches the whole workspace; then `src/lib/sync.ts` watches the store, diffs each collection and pushes batches to `POST /api/sync` (write-through, last write wins). The "Saving… / Saved" indicator in the top bar shows the state; if the network is down it retries.
-- API: `POST /api/auth/register|login|logout|switch|delete-account`, `GET /api/bootstrap`, `POST /api/sync`, `POST /api/workspaces`, `POST /api/workspace/reset-demo`.
+- API: `POST /api/auth/register|login|logout|switch|password|delete-account`, `GET /api/bootstrap`, `POST /api/sync`, `POST /api/workspaces`, `POST /api/workspace/reset-demo`, `POST /api/workspace/members` and `POST /api/workspace/members/password` (admins: invite with a welcome password, set or reset a member's password), `GET|POST /api/instance` (registration policy; changes by the instance owner).
 
 Schema changes:
 
@@ -62,6 +62,8 @@ Account (login) ─┬─ Workspace ─ Member (people: cost rate, role admin / 
 Client
  └─ Project (Prospect → Active → Closed; Fixed price or Time & material; Timesheet or Allocation)
      ├─ Offers (Draft → Sent → Accepted → Order)  with lines: qty, unit, price, estimated hours, planned dates
+     │    ├─ Forecast: activities under each line × team members (hours or days), unsold extra work
+     │    └─ Baselines: frozen copies of lines, forecast and rates (automatic at order, manual any time)
      │    └─ Convert to order: every line becomes a work item (epic by default) with estimate and dates
      ├─ Work items (epic, story, task, bug, subtask) → board, backlog, sprints, timeline
      └─ Hours: tracked (timer, manual) + allocated (fixed share of the day, virtual entries)
@@ -82,12 +84,18 @@ Client
 - **Calendar**, weekly: drag to create or move; allocated blocks sit in a dashed lane beside tracked ones.
 - **Reports**: chip filters (period, member, client, project, tag, billable, source), revenue, cost and margin, Summary/Detailed/Weekly, CSV export.
 - **Clients** with a client page (Overview, Projects, Offers, Time), **Tags**.
+- **Project teams**: a project is open to everyone or has a chosen team (Settings → Team); assignees, forecast columns, allocations and filters then only offer the team, and converting an offer adds the people planned in its forecast. The Team page lists each member's projects.
+- **Instance settings** (Settings → Instance, instance owner only): registration open to anyone, by invitation only, or limited to listed email domains; invited people always get in. The owner is the oldest account (or the one named by `INSTANCE_OWNER_EMAIL`) and can hand over to a member.
+- **Accounts**: registering creates a personal workspace and links the invitations already sent to that email. Admins can invite a member with a welcome password (the account is created at once) and reset a forgotten password from the Team page; everyone changes their own password in Settings.
+- **Days off for everybody**: public holidays and company closures (single days or ranges) in Settings; allocations and dependent offer lines skip them.
 
 ### Project management
 - **Rates with history**: cost per member (Team), price per project with per-member overrides (Settings → Pricing and rates). Changing a rate asks whether it applies to new hours only, to all hours, or from a date.
-- **Offers**: line editor with drag & drop, sections, totals, discount; statuses and conversion into an order choosing type and assignee per line.
+- **Offers**: line editor with drag & drop, sections, totals, discount, optional columns (details) and finish-to-start dependencies between lines (a line after another starts on the next working day after it ends, plus a lag, skipping weekends and holidays); statuses and conversion into an order choosing type and assignee per line. Orders stay editable (extra lines get their work items later).
+- **Forecast matrix**: for each offer, lines as groups and activities as sub-rows crossed with the team members; each cell is the effort (hours or days) that person will spend. Activities discovered after the order can be flagged as unsold: they cost, they do not bill. Totals compare forecast with sold hours and value the effort at cost, with tracked time per member on orders.
+- **Baselines**: a snapshot of lines, forecast and the cost/billing rates in force, taken automatically when an offer becomes an order and on demand afterwards. The comparison shows, line by line and member by member, effort moved between people, rate changes, added or removed scope and the resulting drift of cost and expected margin.
 - **Allocations**: projects in Allocation mode book a percentage of members' days; holidays (Settings) and time off (Team) cancel the hours; a real entry on the same day replaces the allocated one.
-- **Project budget**: sold vs consumed (hours, days, money), cost, margin, burn rate and run-out date, burn chart (consumed, planned, sold), per-order-line table with health, pipeline of open offers.
+- **Project budget**: sold vs consumed (hours, days, money), cost, margin, burn rate and run-out date, burn chart (consumed, planned, sold), forecast at completion (forecast effort and cost, expected margin against the order baselines, unsold work), per-order-line table with health, pipeline of open offers.
 - **Insights**: project portfolio with health (On track / At risk / Over budget), sold, consumed, cost, margin, pipeline.
 
 ## Stack
@@ -110,11 +118,11 @@ src/lib/theme.ts        light / dark / system theme
 src/components/ui       primitives: Button, Avatar, Lozenge, Select (with chip variant), Popover, Modal, Tabs…
 src/components/issues   icons, fields, Create modal, work item view, sprint modals
 src/components/time     TimerBar, entry list, pickers
-src/components/offers   offer lines, conversion, Budget view
+src/components/offers   offer lines, forecast matrix, baselines, conversion, Budget view
 src/components/rates    change-rate dialog
 src/components/allocations  allocations, time off, holidays
 src/components/reports  charts and filter bar
-src/lib                 types, store, sync, seed, rates, offers, allocations, budget
+src/lib                 types, store, sync, seed, rates, offers, forecast, schedule, team, holidays, passwords, allocations, budget
 scripts/                screenshots and end-to-end checks with Playwright (system Chrome)
 ```
 
@@ -136,7 +144,7 @@ node scripts/verify-filters.mjs
 
 - Email invitations and roles enforced on the server (today roles are informative, except the workspace reset reserved to admins).
 - Invoicing: a third amount next to sold and consumed, with rates frozen on invoiced hours.
-- Offer revisions, timesheet approvals, attachments and links between work items.
+- Timesheet approvals, attachments and links between work items.
 
 ## License
 

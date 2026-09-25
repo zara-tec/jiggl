@@ -17,6 +17,8 @@ export interface User {
   role: UserRole;
   /** Internal cost per hour, with history */
   costRates: RatePeriod[];
+  /** Server-side flag: the member is linked to an account and can sign in (never written back) */
+  linked?: boolean;
 }
 
 export interface WorkspaceSettings {
@@ -44,11 +46,18 @@ export interface Allocation {
   note?: string;
 }
 
+export type HolidayKind = "holiday" | "closure";
+
+/** A day, or a range of days, when nobody in the workspace works: a public holiday or a company closure */
 export interface Holiday {
   id: ID;
-  /** yyyy-MM-dd */
+  /** yyyy-MM-dd: the day, or the first day of the range */
   date: string;
+  /** yyyy-MM-dd, inclusive: last day of the range (absent = one day) */
+  to?: string;
   name: string;
+  /** default "holiday" */
+  kind?: HolidayKind;
 }
 
 export interface TimeOff {
@@ -101,6 +110,8 @@ export interface Project {
   billingRates: RatePeriod[];
   /** Per-member overrides of cost and billing rates */
   memberRates: Record<ID, MemberRates>;
+  /** The team: members who work on this project. Absent = everyone in the workspace; the lead is always included. */
+  memberIds?: ID[];
   /** Auto-increment counter for issue keys */
   issueCounter: number;
   /** Auto-increment counter for offer numbers (KEY-O1, KEY-O2, ...) */
@@ -183,11 +194,56 @@ export interface OfferLine {
   /** yyyy-MM-dd */
   plannedStart?: string;
   plannedEnd?: string;
+  /** Finish-to-start dependency: this line starts after that line ends (its start is then computed) */
+  predecessorId?: ID;
+  /** Working days between the predecessor's end and this line's start (negative = overlap) */
+  lagDays?: number;
   /** Work item type created on conversion */
   issueType: OfferLineIssueType;
   /** Work item created on conversion */
   issueId?: ID;
   order: number;
+  /** Forecast: the activities this line breaks down into, with effort per member */
+  activities?: ForecastActivity[];
+}
+
+/**
+ * A sub-row of the forecast matrix: one piece of work under an offer line,
+ * with the hours each member is expected to spend on it.
+ */
+export interface ForecastActivity {
+  id: ID;
+  name: string;
+  /** Forecast hours per member (userId -> hours); absent or 0 = not involved */
+  effort: Record<ID, number>;
+  /** Discovered after the order and not sold to the client: it costs, it does not bill */
+  unsold?: boolean;
+  note?: string;
+  order: number;
+}
+
+export type BaselineKind = "order" | "manual";
+
+/**
+ * Frozen copy of an offer (lines, forecast and the cost rates in force) taken
+ * at a point in time, so later revisions can be compared with what was
+ * planned when the offer was sent, ordered or re-planned.
+ */
+export interface OfferBaseline {
+  id: ID;
+  offerId: ID;
+  projectId: ID;
+  name: string;
+  note?: string;
+  kind: BaselineKind;
+  createdAt: string;
+  createdBy: ID;
+  discountPct?: number;
+  lines: OfferLine[];
+  /** Cost rate per member when the baseline was taken (userId -> rate per hour) */
+  costRates: Record<ID, number>;
+  /** Billing rate per member when the baseline was taken */
+  billingRates: Record<ID, number>;
 }
 
 export interface Offer {

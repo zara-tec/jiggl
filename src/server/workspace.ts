@@ -9,7 +9,7 @@ import type { WorkspaceSettings } from "@/lib/types";
  * Rows and entities have the same shape; the only differences are the
  * workspaceId / syncedAt bookkeeping columns and null vs undefined.
  */
-export const COLLECTIONS = ["users", "clients", "tags", "projects", "sprints", "issues", "timeEntries", "offers", "allocations", "holidays", "timeOffs"] as const;
+export const COLLECTIONS = ["users", "clients", "tags", "projects", "sprints", "issues", "timeEntries", "offers", "offerBaselines", "allocations", "holidays", "timeOffs"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
 
 const MODEL: Record<Collection, string> = {
@@ -21,6 +21,7 @@ const MODEL: Record<Collection, string> = {
   issues: "Issue",
   timeEntries: "TimeEntry",
   offers: "Offer",
+  offerBaselines: "OfferBaseline",
   allocations: "Allocation",
   holidays: "Holiday",
   timeOffs: "TimeOff",
@@ -123,6 +124,7 @@ const ORDER: Record<Collection, Record<string, "asc">[]> = {
   issues: [{ rank: "asc" }],
   timeEntries: [{ start: "asc" }],
   offers: [{ createdAt: "asc" }],
+  offerBaselines: [{ createdAt: "asc" }],
   allocations: [{ from: "asc" }],
   holidays: [{ date: "asc" }],
   timeOffs: [{ from: "asc" }],
@@ -149,6 +151,7 @@ export async function seedDemo(tx: Tx, workspaceId: string, owner: Owner) {
     issues: list(seed.issues),
     timeEntries: list(seed.timeEntries),
     offers: list(seed.offers),
+    offerBaselines: list(seed.offerBaselines),
     allocations: list(seed.allocations),
     holidays: list(seed.holidays),
     timeOffs: list(seed.timeOffs),

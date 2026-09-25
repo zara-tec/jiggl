@@ -1,5 +1,5 @@
 import { addHours, parseISO } from "date-fns";
-import type { Allocation, Issue, Offer, OfferLine, Project, TimeEntry, User, WorkspaceSettings } from "@/lib/types";
+import type { Allocation, ForecastActivity, Issue, Offer, OfferBaseline, OfferLine, Project, TimeEntry, User, WorkspaceSettings } from "@/lib/types";
 
 /** Builders for unit tests: sensible defaults, override what the test cares about. */
 
@@ -80,6 +80,14 @@ export function makeOffer(patch: Partial<Offer> & { id: string }): Offer {
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...patch,
   };
+}
+
+export function makeActivity(patch: Partial<ForecastActivity> & { id: string }): ForecastActivity {
+  return { name: patch.id, effort: {}, order: 1, ...patch };
+}
+
+export function makeBaseline(patch: Partial<OfferBaseline> & { id: string }): OfferBaseline {
+  return { offerId: "o1", projectId: "p1", name: patch.id, kind: "manual", createdAt: "2026-01-15T00:00:00.000Z", createdBy: "u1", lines: [], costRates: {}, billingRates: {}, ...patch };
 }
 
 export function makeAllocation(patch: Partial<Allocation> & { id: string }): Allocation {
